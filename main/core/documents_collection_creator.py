@@ -1,6 +1,7 @@
 import json
 from datetime import datetime, timezone
 from enum import Enum
+import numpy as np
 
 from ..utils.progress_bar import wrap_generator_with_progress_bar
 from ..utils.progress_bar import wrap_iterator_with_progress_bar
@@ -42,63 +43,122 @@ class DocumentCollectionCreator:
         self.persister.remove_folder(self.collection_name)
         self.persister.create_folder(self.collection_name)
 
-        self.__prcoess_collection()
+        update_time = datetime.now(timezone.utc)
+        document_ids = log_execution_duration(lambda: self.__read_documents(),
+                                              identifier=f"Reading documents for collection: {self.collection_name}")
+    
+        last_modified_document_time, number_of_documents, number_of_chunks = log_execution_duration(lambda: self.__index_documents_for_new_collection(document_ids),
+                                                                                                    identifier=f"Indexing documents for collection: {self.collection_name}")
+        
+        self.__create_manifest_file(update_time, 
+                                    last_modified_document_time, 
+                                    number_of_documents, 
+                                    number_of_chunks)
+
+    def __index_documents_for_new_collection(self, document_ids):
+        index_mapping = {}
+        reverse_index_mapping = {}
+        last_index_item_id = -1
+        number_of_documents = 0
+
+        return self.__index_documents(document_ids,
+                                      index_mapping,
+                                      reverse_index_mapping,
+                                      last_index_item_id,
+                                      number_of_documents)
 
     def __update_collection(self):
         if not self.persister.is_path_exists(self.collection_name):
             raise Exception(f"Collection {self.collection_name} does not exist. Please create it first.")
 
-        existing_manifest = json.loads(self.persister.read_text_file(self.__build_manifest_path()))
+        manifest = json.loads(self.persister.read_text_file(self.__build_manifest_path()))
 
-        self.__prcoess_collection(existing_manifest)
-
-    def __prcoess_collection(self, existing_manifest=None):
         update_time = datetime.now(timezone.utc)
-        log_execution_duration(lambda: self.__read_documents(),
-                               identifier=f"Reading documents for collection: {self.collection_name}")
+        document_ids = log_execution_duration(lambda: self.__read_documents(),
+                                              identifier=f"Reading documents for collection: {self.collection_name}")
     
-        last_modified_document_time, number_of_documents, number_of_chunks = log_execution_duration(lambda: self.__index_documents(),
+        last_modified_document_time, number_of_documents, number_of_chunks = log_execution_duration(lambda: self.__index_documents_for_existing_collection(document_ids, manifest),
                                                                                                     identifier=f"Indexing documents for collection: {self.collection_name}")
         
-        self.__create_manifest_file(existing_manifest, 
-                                    update_time, 
+        self.__create_manifest_file(update_time, 
                                     last_modified_document_time, 
                                     number_of_documents, 
-                                    number_of_chunks)
-
+                                    number_of_chunks,
+                                    existing_manifest=manifest)
 
     def __read_documents(self):
-        for document in wrap_generator_with_progress_bar(self.document_reader.read_all_documents(), self.document_reader.get_number_of_documents()):
+        document_ids = []
+        for document in wrap_generator_with_progress_bar(self.document_reader.read_all_documents(), self.document_reader.get_number_of_documents(), 
+                                                         progress_bar_name="Reading documents"):
             for converted_document in self.document_convertor.convert(document):
                 document_path = f"{self.collection_name}/documents/{converted_document['id']}.json"
                 self.persister.save_text_file(json.dumps(converted_document, indent=4), document_path)
+                document_ids.append(converted_document["id"])
+        
+        return document_ids
 
-    def __index_documents(self):
-        index_mapping = {}
-        reverse_index_mapping = {}
-        current_index_item_id = 0
+    def __index_documents_for_existing_collection(self, document_ids, manifest):
+        index_mapping = json.loads(self.persister.read_text_file(self.__build_index_mapping_path()))
+        reverse_index_mapping = json.loads(self.persister.read_text_file(self.__build_reverse_index_mapping_path()))
+        index_info = json.loads(self.persister.read_text_file(self.__build_index_info_path()))
+        last_index_item_id = index_info["lastIndexItemId"]
+        number_of_documents = manifest["numberOfDocuments"]
+
+        for batch_document_ids in wrap_iterator_with_progress_bar(self.__batch_items(document_ids, 
+                                                                                     self.indexing_batch_size), 
+                                                                  progress_bar_name="Cleaning outdated index data"):
+            index_ids_to_remove = []
+
+            for document_id in batch_document_ids:
+                if document_id in reverse_index_mapping:
+                    document_index_ids_to_remove = reverse_index_mapping[document_id]
+
+                    index_ids_to_remove.extend(document_index_ids_to_remove)
+
+                    for index_id in document_index_ids_to_remove:
+                        del index_mapping[str(index_id)]
+                    del reverse_index_mapping[document_id]
+                    number_of_documents -= 1
+        
+            for indexer in self.document_indexers:
+                indexer.remove_ids(np.array(index_ids_to_remove))
+
+        return self.__index_documents(document_ids,
+                                      index_mapping,
+                                      reverse_index_mapping,
+                                      last_index_item_id,
+                                      number_of_documents)
+
+    def __index_documents(self, 
+                          document_ids, 
+                          index_mapping, 
+                          reverse_index_mapping, 
+                          last_index_item_id,
+                          number_of_documents):
 
         last_modified_document_time = None
-        number_of_documents = 0
 
-        for document_file_names in wrap_iterator_with_progress_bar(self.__get_file_name_batches()):
+        for document_pathes in wrap_iterator_with_progress_bar(self.__get_file_path_batches(document_ids), 
+                                                               progress_bar_name="Indexing documents"):
             items_to_index = []
             index_item_ids = []
 
-            for document_file_name in document_file_names:
-                document_path = f"{self.collection_name}/documents/{document_file_name}"
+            for document_path in document_pathes:
+                number_of_documents += 1
+
                 converted_document = json.loads(self.persister.read_text_file(document_path))
 
                 modified_document_time = datetime.fromisoformat(converted_document["modifiedTime"])
                 if last_modified_document_time is None or last_modified_document_time < modified_document_time:
                     last_modified_document_time = modified_document_time
-                number_of_documents += 1
 
                 for chunk_number in range(0, len(converted_document["chunks"])):
-                    items_to_index.append(converted_document["chunks"][chunk_number]["indexedData"])
-                    index_item_ids.append(current_index_item_id)
+                    last_index_item_id += 1
 
-                    index_mapping[current_index_item_id] = {
+                    items_to_index.append(converted_document["chunks"][chunk_number]["indexedData"])
+                    index_item_ids.append(last_index_item_id)
+
+                    index_mapping[last_index_item_id] = {
                         "documentId": converted_document["id"],
                         "documentUrl": converted_document["url"],
                         "documentPath": document_path,
@@ -107,48 +167,63 @@ class DocumentCollectionCreator:
 
                     if converted_document["id"] not in reverse_index_mapping:
                         reverse_index_mapping[converted_document["id"]] = []
-                    reverse_index_mapping[converted_document["id"]].append(current_index_item_id)
-
-                    current_index_item_id += 1
+                    reverse_index_mapping[converted_document["id"]].append(last_index_item_id)
 
             for indexer in self.document_indexers:
-                indexer.index_texts(items_to_index, index_item_ids)
+                indexer.index_texts(index_item_ids, items_to_index)
 
         for indexer in self.document_indexers:
-            index_base_path = self.__build_index_base_path(indexer)
+            self.persister.save_bin_file(indexer.serialize(), f"{self.__build_index_base_path(indexer)}/indexer")
 
-            self.persister.save_bin_file(indexer.serialize(), f"{index_base_path}/indexer")
-            self.persister.save_text_file(json.dumps(index_mapping, indent=2), f"{index_base_path}/index_document_mapping.json")
-            self.persister.save_text_file(json.dumps(reverse_index_mapping, indent=2), f"{index_base_path}/reverse_index_document_mapping.json")
+        index_info = { "lastIndexItemId": last_index_item_id, }
+        self.persister.save_text_file(json.dumps(index_info, indent=2), self.__build_index_info_path())
+        self.persister.save_text_file(json.dumps(index_mapping, indent=2), self.__build_index_mapping_path())
+        self.persister.save_text_file(json.dumps(reverse_index_mapping, indent=2), self.__build_reverse_index_mapping_path())
         
-        return last_modified_document_time, number_of_documents, current_index_item_id + 1
+        return last_modified_document_time, number_of_documents, last_index_item_id + 1
+
+    def __build_reverse_index_mapping_path(self):
+        return f"{self.collection_name}/indexes/reverse_index_document_mapping.json"
+
+    def __build_index_mapping_path(self):
+        return f"{self.collection_name}/indexes/index_document_mapping.json"
+
+    def __build_index_info_path(self):
+        return f"{self.collection_name}/indexes/index_info.json"
 
     def __build_index_base_path(self, indexer):
         return f"{self.collection_name}/indexes/{indexer.get_name()}"
 
-    def __get_file_name_batches(self):
-        file_names = self.persister.read_folder_files(f"{self.collection_name}/documents")
+    def __get_file_path_batches(self, document_ids):
+        file_paths = [f"{self.collection_name}/documents/{document_id}.json" for document_id in document_ids]
+        return self.__batch_items(file_paths, self.indexing_batch_size)
 
-        return [file_names[i:i + self.indexing_batch_size] for i in range(0, len(file_names), self.indexing_batch_size)]
+    def __batch_items(self, items, batch_size):
+        return [items[i:i + batch_size] for i in range(0, len(items), batch_size)]
 
     def __create_manifest_file(self, 
-                               existing_manifest, 
                                update_time, 
                                last_modified_document_time, 
                                number_of_documents, 
-                               number_of_chunks):
-        manifest_content = self.__create_manifest_content(existing_manifest, 
-                                                          update_time, 
+                               number_of_chunks,
+                               existing_manifest=None):
+        manifest_content = self.__create_manifest_content(update_time, 
                                                           last_modified_document_time, 
                                                           number_of_documents, 
-                                                          number_of_chunks)
+                                                          number_of_chunks,
+                                                          existing_manifest=existing_manifest)
 
         self.persister.save_text_file(json.dumps(manifest_content, indent=4), self.__build_manifest_path())
 
     def __build_manifest_path(self):
         return f"{self.collection_name}/manifest.json"
 
-    def __create_manifest_content(self, existing_manifest, update_time, last_modified_document_time, number_of_documents, number_of_chunks):
+    def __create_manifest_content(self,
+                                  update_time, 
+                                  last_modified_document_time, 
+                                  number_of_documents, 
+                                  number_of_chunks,
+                                  existing_manifest=None):
         if existing_manifest:
             return { **existing_manifest,
                 "updatedTime": update_time.isoformat(),

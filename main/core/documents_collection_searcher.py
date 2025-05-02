@@ -16,8 +16,8 @@ class DocumentCollectionSearcher:
         }
 
     def __build_results(self, scores, indexes, include_text_content, include_all_chunks_content, include_matched_chunks_content):
-        index_base_path = f"{self.collection_name}/indexes/{self.indexer.get_name()}"
-        index_document_mapping = json.loads(self.persister.read_text_file(f"{index_base_path}/index_document_mapping.json"))
+        indexes_base_path = f"{self.collection_name}/indexes"
+        index_document_mapping = json.loads(self.persister.read_text_file(f"{indexes_base_path}/index_document_mapping.json"))
 
         result = {}
 

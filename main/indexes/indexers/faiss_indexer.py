@@ -14,8 +14,11 @@ class FaissIndexer:
     def get_name(self):
         return self.name
 
-    def index_texts(self, texts, ids):
+    def index_texts(self, ids, texts):
         self.faiss_index.add_with_ids(self.embedder.embed(texts), ids)
+
+    def remove_ids(self, ids):
+        self.faiss_index.remove_ids(ids)
 
     def serialize(self):
         return faiss.serialize_index(self.faiss_index)
