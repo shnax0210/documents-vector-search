@@ -1,35 +1,50 @@
 import json
-import numpy as np
 from datetime import datetime, timezone
+from enum import Enum
 
 from ..utils.progress_bar import wrap_generator_with_progress_bar
 from ..utils.progress_bar import wrap_iterator_with_progress_bar
 from ..utils.performance import log_execution_duration
 
+class OPERATION_TYPE(Enum):
+    CREATE = "create"
+    UPDATE = "update"
+
 class DocumentCollectionCreator:
     def __init__(self,
-                 collection_name,
+                 collection_name: str,
                  document_reader,
                  document_converter,
                  document_indexers,
                  persister,
-                 indexing_batch_size=500_000,
-                 use_embedding_cache=True):
+                 operation_type: OPERATION_TYPE = OPERATION_TYPE.CREATE,
+                 indexing_batch_size=500_000):
+        self.operation_type = operation_type
         self.collection_name = collection_name
         self.document_reader = document_reader
         self.document_convertor = document_converter
         self.document_indexers = document_indexers
         self.persister = persister
         self.indexing_batch_size = indexing_batch_size
-        self.use_embedding_cache = use_embedding_cache
 
-    def create_collection(self):
+    def update_collection(self):
+        if self.operation_type == OPERATION_TYPE.CREATE:
+            self.__create_collection()
+            return
+        
+        if self.operation_type == OPERATION_TYPE.UPDATE:
+            self.__update_collection()
+            return
+        
+        raise ValueError(f"Unknown operation type: {self.operation_type}")
+
+    def __create_collection(self):
         self.persister.remove_folder(self.collection_name)
         self.persister.create_folder(self.collection_name)
 
         self.__prcoess_collection()
 
-    def update_collection(self):
+    def __update_collection(self):
         if not self.persister.is_path_exists(self.collection_name):
             raise Exception(f"Collection {self.collection_name} does not exist. Please create it first.")
 
@@ -60,13 +75,16 @@ class DocumentCollectionCreator:
 
     def __index_documents(self):
         index_mapping = {}
-        index_item_id = 0
+        reverse_index_mapping = {}
+        current_index_item_id = 0
 
         last_modified_document_time = None
         number_of_documents = 0
 
         for document_file_names in wrap_iterator_with_progress_bar(self.__get_file_name_batches()):
             items_to_index = []
+            index_item_ids = []
+
             for document_file_name in document_file_names:
                 document_path = f"{self.collection_name}/documents/{document_file_name}"
                 converted_document = json.loads(self.persister.read_text_file(document_path))
@@ -78,78 +96,32 @@ class DocumentCollectionCreator:
 
                 for chunk_number in range(0, len(converted_document["chunks"])):
                     items_to_index.append(converted_document["chunks"][chunk_number]["indexedData"])
+                    index_item_ids.append(current_index_item_id)
 
-                    index_mapping[index_item_id] = {
+                    index_mapping[current_index_item_id] = {
                         "documentId": converted_document["id"],
                         "documentUrl": converted_document["url"],
                         "documentPath": document_path,
                         "chunkNumber": chunk_number
                     }
 
-                    index_item_id += 1
+                    if converted_document["id"] not in reverse_index_mapping:
+                        reverse_index_mapping[converted_document["id"]] = []
+                    reverse_index_mapping[converted_document["id"]].append(current_index_item_id)
+
+                    current_index_item_id += 1
 
             for indexer in self.document_indexers:
-                indexer.index_embeddings(self.embed_texts(indexer, items_to_index))
+                indexer.index_texts(items_to_index, index_item_ids)
 
         for indexer in self.document_indexers:
             index_base_path = self.__build_index_base_path(indexer)
 
             self.persister.save_bin_file(indexer.serialize(), f"{index_base_path}/indexer")
-            self.persister.save_text_file(json.dumps(index_mapping, indent=4), f"{index_base_path}/index_document_mapping.json")
+            self.persister.save_text_file(json.dumps(index_mapping, indent=2), f"{index_base_path}/index_document_mapping.json")
+            self.persister.save_text_file(json.dumps(reverse_index_mapping, indent=2), f"{index_base_path}/reverse_index_document_mapping.json")
         
-        return last_modified_document_time, number_of_documents, index_item_id + 1
-
-
-    def embed_texts(self, indexer, texts):
-        if not self.use_embedding_cache:
-            return indexer.embed_texts(texts)
-
-        index_base_path = self.__build_index_base_path(indexer)
-        cache = self.__read_embeddings_cache(index_base_path)
-
-        text_embeddings = []
-        new_text_values = []
-        new_text_indexes = []
-        for text_index in range(0, len(texts)):
-            text = texts[text_index]
-            if text in cache:
-                text_embeddings.append(cache[text])
-            else:
-                text_embeddings.append(None)
-                new_text_values.append(text)
-                new_text_indexes.append(text_index)
-
-        if len(new_text_values) != 0:
-            print(f"Embedding {len(new_text_values)} new texts for indexer {indexer.get_name()}...")
-
-            new_embeddings = indexer.embed_texts(new_text_values)
-
-            for index in range(0, len(new_text_values)):
-                text = new_text_values[index]
-                text_embeddings[new_text_indexes[index]] = new_embeddings[index]
-                cache[text] = new_embeddings[index]
-        
-            self.__save_embeddings_cache(index_base_path, cache)
-
-        return np.array(text_embeddings)
-
-    def __save_embeddings_cache(self, index_base_path, cache):
-        serializable_cache = {}
-        for key, embedding in cache.items():
-            if hasattr(embedding, 'tolist'):
-                serializable_cache[key] = embedding.tolist()
-            else:
-                serializable_cache[key] = embedding
-
-        self.persister.save_text_file(json.dumps(serializable_cache), f"{index_base_path}/embeddings_cache.json")
-
-    def __read_embeddings_cache(self, index_base_path):
-        cache_path = f"{index_base_path}/embeddings_cache.json"
-        if self.persister.is_path_exists(cache_path):
-            return json.loads(self.persister.read_text_file(cache_path))
-        
-        print(f"Embeddings cache not present for indexer {index_base_path}. Creating new one.")
-        return {}
+        return last_modified_document_time, number_of_documents, current_index_item_id + 1
 
     def __build_index_base_path(self, indexer):
         return f"{self.collection_name}/indexes/{indexer.get_name()}"

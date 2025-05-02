@@ -3,7 +3,7 @@ import argparse
 
 from main.sources.confluence.confluence_document_reader import ConfluenceDocumentReader
 from main.sources.confluence.confluence_document_converter import ConfluenceDocumentConverter
-from main.factories.create_collection_factory import create_collection_creatory
+from main.factories.create_collection_factory import create_collection_creator
 
 ap = argparse.ArgumentParser()
 ap.add_argument("-url", "--url", required=True, help="confluence base url")
@@ -28,9 +28,9 @@ confluence_document_reader = ConfluenceDocumentReader(base_url=args['url'],
                                                       read_comments=args['readComments'],)
 confluence_document_converter = ConfluenceDocumentConverter()
 
-confluence_collection_creator = create_collection_creatory(collection_name=args['collection'],
+confluence_collection_creator = create_collection_creator(collection_name=args['collection'],
                                                           indexers=args['indexers'],
                                                           document_reader=confluence_document_reader,
                                                           document_converter=confluence_document_converter)
 
-confluence_collection_creator.create_collection()
+confluence_collection_creator.update_collection()

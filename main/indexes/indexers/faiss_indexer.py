@@ -9,19 +9,13 @@ class FaissIndexer:
         if serialized_index is not None:
             self.faiss_index = faiss.deserialize_index(serialized_index)
         else:
-            self.faiss_index = faiss.IndexFlatL2(embedder.get_number_of_dimensions())
+            self.faiss_index = faiss.IndexIDMap(faiss.IndexFlatL2(embedder.get_number_of_dimensions()))
 
     def get_name(self):
         return self.name
-    
-    def embed_texts(self, text):
-        return self.embedder.embed(text)
 
-    def index_embeddings(self, embeddings):
-        self.faiss_index.add(embeddings)
-
-    def index_texts(self, texts):
-        self.faiss_index.add(self.embed_texts(texts))
+    def index_texts(self, texts, ids):
+        self.faiss_index.add_with_ids(self.embedder.embed(texts), ids)
 
     def serialize(self):
         return faiss.serialize_index(self.faiss_index)

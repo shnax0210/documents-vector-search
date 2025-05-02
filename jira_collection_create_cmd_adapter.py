@@ -3,7 +3,7 @@ import argparse
 
 from main.sources.jira.jira_document_reader import JiraDocumentReader
 from main.sources.jira.jira_document_converter import JiraDocumentConverter
-from main.factories.create_collection_factory import create_collection_creatory
+from main.factories.create_collection_factory import create_collection_creator
 
 ap = argparse.ArgumentParser()
 ap.add_argument("-url", "--url", required=True, help="jira base url")
@@ -28,10 +28,10 @@ jira_document_reader = JiraDocumentReader(base_url=args['url'],
 
 jira_document_converter = JiraDocumentConverter()
 
-jira_collection_creator = create_collection_creatory(collection_name=args['collection'],
+jira_collection_creator = create_collection_creator(collection_name=args['collection'],
                                                      indexers=args['indexers'],
                                                      document_reader=jira_document_reader,
                                                      document_converter=jira_document_converter)
 
 
-jira_collection_creator.create_collection()
+jira_collection_creator.update_collection()

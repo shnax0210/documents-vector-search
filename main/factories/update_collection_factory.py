@@ -7,8 +7,8 @@ from main.sources.jira.jira_document_reader import JiraDocumentReader
 from main.sources.jira.jira_document_converter import JiraDocumentConverter
 from main.sources.confluence.confluence_document_reader import ConfluenceDocumentReader
 from main.sources.confluence.confluence_document_converter import ConfluenceDocumentConverter
-from main.indexes.indexer_factory import create_indexer
-from main.core.documents_collection_creator import DocumentCollectionCreator
+from main.indexes.indexer_factory import load_indexer
+from main.core.documents_collection_creator import DocumentCollectionCreator, OPERATION_TYPE
 
 def create_collection_updator(collection_name):
     disk_persister = DiskPersister(base_path="./data/collections")
@@ -20,13 +20,14 @@ def create_collection_updator(collection_name):
 
     document_reader, document_converter = __create_reader_and_converter(manifest)
 
-    document_indexers = [create_indexer(indexer["name"]) for indexer in manifest['indexers']]
+    document_indexers = [load_indexer(indexer["name"], collection_name, disk_persister) for indexer in manifest['indexers']]
 
     confluence_collection_creator = DocumentCollectionCreator(collection_name=collection_name, 
                                                               document_reader=document_reader, 
                                                               document_converter=document_converter, 
                                                               document_indexers=document_indexers,
-                                                              persister=disk_persister)
+                                                              persister=disk_persister,
+                                                              operation_type=OPERATION_TYPE.UPDATE)
 
     return confluence_collection_creator
 
