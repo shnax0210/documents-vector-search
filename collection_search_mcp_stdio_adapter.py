@@ -34,7 +34,7 @@ def search_documents(query: str) -> str:
                                      include_text_content=args['includeFullText'],
                                      include_matched_chunks_content=not args['includeFullText'])
 
-    return json.dumps(search_results, indent=4)
+    return json.dumps(search_results, indent=2, ensure_ascii=False)
     
 
 if __name__ == "__main__":

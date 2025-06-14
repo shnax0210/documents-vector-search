@@ -88,9 +88,8 @@ class DocumentCollectionCreator:
                                                          progress_bar_name="Reading documents"):
             for converted_document in self.document_converter.convert(document):
                 document_path = f"{self.collection_name}/documents/{converted_document['id']}.json"
-                self.persister.save_text_file(json.dumps(converted_document, indent=4), document_path)
+                self.__save_json_file(converted_document, document_path)
                 document_ids.append(converted_document["id"])
-        
         return document_ids
 
     def __index_documents_for_existing_collection(self, document_ids, manifest):
@@ -169,10 +168,9 @@ class DocumentCollectionCreator:
             self.persister.save_bin_file(indexer.serialize(), f"{self.__build_index_base_path(indexer)}/indexer")
 
         index_info = { "lastIndexItemId": last_index_item_id, }
-        self.persister.save_text_file(json.dumps(index_info, indent=2), self.__build_index_info_path())
-        self.persister.save_text_file(json.dumps(index_mapping, indent=2), self.__build_index_mapping_path())
-        self.persister.save_text_file(json.dumps(reverse_index_mapping, indent=2), self.__build_reverse_index_mapping_path())
-        
+        self.__save_json_file(index_info, self.__build_index_info_path())
+        self.__save_json_file(index_mapping, self.__build_index_mapping_path())
+        self.__save_json_file(reverse_index_mapping, self.__build_reverse_index_mapping_path())
         return last_modified_document_time, self.document_indexers[0].get_size()
 
     def __build_reverse_index_mapping_path(self):
@@ -200,7 +198,7 @@ class DocumentCollectionCreator:
                                                           number_of_chunks,
                                                           existing_manifest=existing_manifest)
 
-        self.persister.save_text_file(json.dumps(manifest_content, indent=4), self.__build_manifest_path())
+        self.__save_json_file(manifest_content, self.__build_manifest_path())
 
     def __build_manifest_path(self):
         return f"{self.collection_name}/manifest.json"
@@ -229,3 +227,6 @@ class DocumentCollectionCreator:
             "reader": self.document_reader.get_reader_details(),
             "indexers": [{ "name": indexer.get_name() } for indexer in self.document_indexers],
         }
+    
+    def __save_json_file(self, content, file_path):
+        self.persister.save_text_file(json.dumps(content, indent=2, ensure_ascii=False), file_path)

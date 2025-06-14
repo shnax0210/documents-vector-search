@@ -20,7 +20,7 @@ class CacheReaderDecorator:
             document_index = -1
             for document in self.reader.read_all_documents():
                 document_index += 1
-                self.persister.save_text_file(json.dumps(document, indent=4), f"{cache_key}/{document_index}.json")
+                self.persister.save_text_file(json.dumps(document, indent=2, ensure_ascii=False), f"{cache_key}/{document_index}.json")
 
                 yield document
             

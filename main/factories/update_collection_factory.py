@@ -11,6 +11,8 @@ from main.sources.confluence.confluence_document_reader import ConfluenceDocumen
 from main.sources.confluence.confluence_cloud_document_reader import ConfluenceCloudDocumentReader
 from main.sources.confluence.confluence_document_converter import ConfluenceDocumentConverter
 from main.sources.confluence.confluence_cloud_document_converter import ConfluenceCloudDocumentConverter
+from main.sources.files.files_document_reader import FilesDocumentReader
+from main.sources.files.files_document_converter import FilesDocumentConverter
 from main.indexes.indexer_factory import load_indexer
 from main.core.documents_collection_creator import DocumentCollectionCreator, OPERATION_TYPE
 
@@ -42,10 +44,11 @@ def __create_collection_updater(collection_name):
                                      operation_type=OPERATION_TYPE.UPDATE)
 
 
-def __calculate_update_date(manifest):
-    last_modified_minus_day = datetime.fromisoformat(manifest['lastModifiedDocumentTime']) - timedelta(days=1)
-    return last_modified_minus_day.date().isoformat()
+def __calculate_update_time(manifest):
+    return datetime.fromisoformat(manifest['lastModifiedDocumentTime']) - timedelta(days=1)
 
+def __calculate_update_date(manifest):
+    return __calculate_update_time(manifest).date()
 
 def __create_reader_and_converter(manifest):
     if manifest['reader']['type'] == 'jira':
@@ -61,6 +64,10 @@ def __create_reader_and_converter(manifest):
     if manifest['reader']['type'] == 'confluenceCloud':
         reader, converter = __create_confluence_cloud_reader_and_converter(manifest)
         return [reader, converter]
+    
+    if manifest['reader']['type'] == 'localFiles':
+        reader, converter = __create_local_files_reader_and_converter(manifest)
+        return [reader, converter]
 
     raise Exception(f"Unknown document reader type: {manifest['reader']['type']}")
 
@@ -70,7 +77,7 @@ def __create_jira_reader_and_converter(manifest):
     login = os.environ.get('JIRA_LOGIN')
     password = os.environ.get('JIRA_PASSWORD')
 
-    update_date = __calculate_update_date(manifest)
+    update_date = __calculate_update_date(manifest).isoformat()
     query_addition = f'AND (created >= "{update_date}" OR updated >= "{update_date}")'
 
     reader = JiraDocumentReader(base_url=manifest['reader']['baseUrl'], 
@@ -89,7 +96,7 @@ def __create_jira_cloud_reader_and_converter(manifest):
     if not email or not api_token:
         raise ValueError("Both 'ATLASSIAN_EMAIL' and 'ATLASSIAN_TOKEN' environment variables must be provided for Jira Cloud.")
 
-    update_date = __calculate_update_date(manifest)
+    update_date = __calculate_update_date(manifest).isoformat()
     query_addition = f'AND (created >= "{update_date}" OR updated >= "{update_date}")'
 
     reader = JiraCloudDocumentReader(base_url=manifest['reader']['baseUrl'], 
@@ -108,7 +115,7 @@ def __create_confluence_reader_and_converter(manifest):
     if not token and (not login or not password):
         raise ValueError("Either 'token' ('CONF_TOKEN' env variable) or both 'login' ('CONF_LOGIN' env variable) and 'password' ('CONF_PASSWORD' env variable) must be provided.")
 
-    update_date = __calculate_update_date(manifest)
+    update_date = __calculate_update_date(manifest).isoformat()
     query_addition = f'AND (created >= "{update_date}" OR lastModified >= "{update_date}")'
 
     reader = ConfluenceDocumentReader(base_url=manifest['reader']['baseUrl'], 
@@ -128,7 +135,7 @@ def __create_confluence_cloud_reader_and_converter(manifest):
     if not email or not api_token:
         raise ValueError("Both 'ATLASSIAN_EMAIL' and 'ATLASSIAN_TOKEN' environment variables must be provided for Confluence Cloud.")
 
-    update_date = __calculate_update_date(manifest)
+    update_date = __calculate_update_date(manifest).isoformat()
     query_addition = f'AND (created >= "{update_date}" OR lastModified >= "{update_date}")'
 
     reader = ConfluenceCloudDocumentReader(base_url=manifest['reader']['baseUrl'], 
@@ -139,3 +146,22 @@ def __create_confluence_cloud_reader_and_converter(manifest):
                                           read_all_comments=manifest['reader']['readAllComments'],)
     converter = ConfluenceCloudDocumentConverter()
     return reader,converter
+
+
+def __create_local_files_reader_and_converter(manifest):
+    reader_config = manifest['reader']
+    
+    base_path = reader_config['basePath']
+    include_patterns = reader_config.get('includePatterns', [".*"])
+    exclude_patterns = reader_config.get('excludePatterns', [])
+    fail_fast = reader_config.get('failFast', False)
+
+    update_time = __calculate_update_time(manifest)
+    
+    reader = FilesDocumentReader(base_path=base_path,
+                                include_patterns=include_patterns,
+                                exclude_patterns=exclude_patterns,
+                                fail_fast=fail_fast,
+                                start_from_time=update_time)
+    converter = FilesDocumentConverter()
+    return reader, converter
