@@ -32,7 +32,7 @@ class FilesDocumentConverter:
             if content_part['text'].strip():
                 for chunk in self.text_splitter.split_text(content_part['text']):
                     chunks.append({
-                        **({"identifier": content_part['identifier']} if "identifier" in content_part else {}),
+                        **({"metadata": content_part['metadata']} if "metadata" in content_part else {}),
                         "indexedData": chunk
                     })
 

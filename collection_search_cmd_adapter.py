@@ -33,4 +33,4 @@ search_result = log_execution_duration(lambda: searcher.search(args['query'],
                                                                include_all_chunks_content=args['includeAllChunksText']),
                                        identifier=f"Searching collection: \"{args['collection']}\" by query: \"{args['query']}\"")
 
-logging.info(f"Search results:\n{json.dumps(search_result, indent=4)}")
+logging.info(f"Search results:\n{json.dumps(search_result, indent=2, ensure_ascii=False)}")

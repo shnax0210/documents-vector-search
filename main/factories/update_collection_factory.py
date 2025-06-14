@@ -11,6 +11,8 @@ from main.sources.confluence.confluence_document_reader import ConfluenceDocumen
 from main.sources.confluence.confluence_cloud_document_reader import ConfluenceCloudDocumentReader
 from main.sources.confluence.confluence_document_converter import ConfluenceDocumentConverter
 from main.sources.confluence.confluence_cloud_document_converter import ConfluenceCloudDocumentConverter
+from main.sources.files.files_document_reader import FilesDocumentReader
+from main.sources.files.files_document_converter import FilesDocumentConverter
 from main.indexes.indexer_factory import load_indexer
 from main.core.documents_collection_creator import DocumentCollectionCreator, OPERATION_TYPE
 
@@ -60,6 +62,10 @@ def __create_reader_and_converter(manifest):
     
     if manifest['reader']['type'] == 'confluenceCloud':
         reader, converter = __create_confluence_cloud_reader_and_converter(manifest)
+        return [reader, converter]
+    
+    if manifest['reader']['type'] == 'localFiles':
+        reader, converter = __create_local_files_reader_and_converter(manifest)
         return [reader, converter]
 
     raise Exception(f"Unknown document reader type: {manifest['reader']['type']}")
@@ -139,3 +145,19 @@ def __create_confluence_cloud_reader_and_converter(manifest):
                                           read_all_comments=manifest['reader']['readAllComments'],)
     converter = ConfluenceCloudDocumentConverter()
     return reader,converter
+
+
+def __create_local_files_reader_and_converter(manifest):
+    reader_config = manifest['reader']
+    
+    base_path = reader_config['basePath']
+    include_patterns = reader_config.get('includePatterns', [".*"])
+    exclude_patterns = reader_config.get('excludePatterns', [])
+    fail_fast = reader_config.get('failFast', False)
+    
+    reader = FilesDocumentReader(base_path=base_path,
+                                include_patterns=include_patterns,
+                                exclude_patterns=exclude_patterns,
+                                fail_fast=fail_fast)
+    converter = FilesDocumentConverter()
+    return reader, converter
