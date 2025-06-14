@@ -17,7 +17,8 @@ class FilesDocumentConverter:
         }]
     
     def __build_document_text(self, document):
-        return self.__convert_to_text([document['fileRelativePath'], document['content']])
+        content = self.__convert_to_text([content_part['text'] for content_part in document['content']], "")
+        return self.__convert_to_text([document['fileRelativePath'], content])
     
     def __convert_to_text(self, elements, delimiter="\n\n"):
         return delimiter.join([element for element in elements if element]).strip()
@@ -27,12 +28,14 @@ class FilesDocumentConverter:
                 "indexedData": document['fileRelativePath']
             }]
         
-        file_content = document['content']
-        if file_content:
-            for chunk in self.text_splitter.split_text(file_content):
-                chunks.append({
-                    "indexedData": chunk
-                })
+        for content_part in document['content']:
+            if content_part['text'].strip():
+                for chunk in self.text_splitter.split_text(content_part['text']):
+                    chunks.append({
+                        **({"identifier": content_part['identifier']} if "identifier" in content_part else {}),
+                        "indexedData": chunk
+                    })
+
             
         return chunks
 

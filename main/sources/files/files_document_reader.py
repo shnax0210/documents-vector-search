@@ -3,6 +3,7 @@ import logging
 import json
 import datetime
 import re
+import PyPDF2
 
 DEFAULT_FILE_TYPE = "default"
 
@@ -16,7 +17,9 @@ class FilesDocumentReader:
         self.compiled_exclude_patterns = [re.compile(pattern) for pattern in exclude_patterns]
 
         self.fail_fast = fail_fast
-        self.file_readers = {}
+        self.file_readers = {
+            '.pdf': self.__read_pdf_file,
+        }
         self.default_reader = self.__read_text_file
 
     def read_all_documents(self):
@@ -51,9 +54,7 @@ class FilesDocumentReader:
         logging.info(f"Files reading stats: \n{json.dumps(result_stats, indent=4)}")
 
     def get_number_of_documents(self):
-        result = len(self.__read_file_pathes())
-        print(f"Number of documents: {result}")
-        return result
+        return len(self.__read_file_pathes())
 
     def get_reader_details(self) -> dict:
         return {
@@ -76,7 +77,7 @@ class FilesDocumentReader:
     
     def __read_file(self, file_path: str):
         file_extension = os.path.splitext(file_path)[1].lower()
-        file_type = self.file_readers.get(file_extension, DEFAULT_FILE_TYPE)
+        file_type = file_extension if file_extension in self.file_readers else DEFAULT_FILE_TYPE
         file_reader = self.file_readers.get(file_extension, self.default_reader)
 
         try:
@@ -100,4 +101,24 @@ class FilesDocumentReader:
 
     def __read_text_file(self, file_path: str):
         with open(file_path, 'r') as file:
-            return file.read()
+            file_content = file.read()
+            return [
+                {
+                    "text": file_content
+                }
+            ]
+
+    def __read_pdf_file(self, file_path: str):
+        result = []
+        with open(file_path, 'rb') as file:
+            pdf_reader = PyPDF2.PdfReader(file)
+            page_number = 0
+            for page in pdf_reader.pages:
+                page_number += 1
+                result.append({
+                    "identifier": {
+                        "pageNumber": page_number
+                    },
+                    "text": page.extract_text()
+                })
+        return result
