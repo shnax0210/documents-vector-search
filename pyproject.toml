@@ -1,15 +1,15 @@
 [project]
 name = "documents-vector-search"
 version = "0.1.0"
-description = "Support Jira and Confluence, provides abstractions to add more sources"
+description = "Project allows document indexing in a local vector database and then search (supports Jira, Confluence and local files, can be integrated via MCP)"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "bs4>=0.0.2",
-    "faiss-cpu>=1.10.0",
-    "langchain>=0.3.23",
-    "mcp>=1.6.0",
-    "requests>=2.32.3",
-    "sentence-transformers>=4.0.2",
-    "unstructured[all-docs]>=0.17.2",
+    "faiss-cpu>=1.11.0",
+    "langchain>=0.3.26",
+    "mcp>=1.11.0",
+    "requests>=2.32.4",
+    "sentence-transformers>=5.0.0",
+    "unstructured[all-docs]>=0.18.5",
 ]
