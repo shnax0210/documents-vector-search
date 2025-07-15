@@ -103,8 +103,8 @@ Notes:
 - By default, the collection will be named after the last folder in `--basePath` (for example, if `--basePath` is "/Users/a/b", the collection name will be "b"). You can override this by adding `--collection ${collectionName}`, as in all other scripts.
 - By default, if a file cannot be read, it is just skipped and written to the log. You can override this by adding the `--failFast` parameter, so the script will fail immediately after the first error.
 - By default, all files from `${pathToFolderWithFiles}` are included (except for some predefined types, like zip, jar, etc.). You can adjust this by adding `--includePatterns` and `--excludePatterns` parameters with regexes. If you specify both `--includePatterns` and `--excludePatterns`, only files that match `--includePatterns` and do not match `--excludePatterns` will be included. Examples:
-    - Example of `--includePatterns` (the parameter can be used multiple times): `--includePatterns "/subfolder1/.*" --includePatterns "/subfolder2/.*"`.
-    - Example of `--excludePatterns` (the parameter can be used multiple times): `--excludePatterns "/subfolder1/.*" --excludePatterns "/subfolder2/.*"`.
+    - Example of `--includePatterns` (the parameter can be used multiple times): `--includePatterns "subfolder1/.*" "subfolder2/.*"`.
+    - Example of `--excludePatterns` (the parameter can be used multiple times): `--excludePatterns "subfolder1/.*" "subfolder2/.*"`.
 - The script uses the [Unstructured](https://github.com/Unstructured-IO/unstructured) Python library, which supports many [file formats](https://docs.unstructured.io/welcome#supported-file-types) such as .pdf, .pptx, .docx, etc. Some file formats may require additional software installation, listed [here](https://docs.unstructured.io/open-source/installation/full-installation#full-installation).
 
 ### Update existing collection:
