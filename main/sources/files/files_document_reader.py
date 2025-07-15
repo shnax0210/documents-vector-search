@@ -58,7 +58,6 @@ EXCLUDED_FILE_EXTENSIONS = [
     ".3gp",
     ".mpg",
     ".mpeg",
-    ".ts",
     ".vob",
     ".ogv",
     # Audio formats
