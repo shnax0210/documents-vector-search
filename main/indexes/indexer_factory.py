@@ -1,4 +1,5 @@
 from .indexers.faiss_indexer import FaissIndexer
+from .indexers.chroma_indexer import ChromaIndexer
 from .embeddings.sentence_embeder import SentenceEmbedder
 
 def __split_indexer_name(indexer_name):
@@ -25,6 +26,9 @@ def create_indexer(indexer_name):
 
     if indexer_type == "indexer_FAISS_IndexFlatL2":
         return FaissIndexer(indexer_name, __create_sentence_embedder(embedding_model))
+    
+    if indexer_type == "indexer_ChromaDb":
+        return ChromaIndexer(indexer_name, __create_sentence_embedder(embedding_model))
 
     raise ValueError(f"Unknown indexer name: {indexer_name}")
 
@@ -34,5 +38,9 @@ def load_indexer(indexer_name, collection_name, persister):
     if indexer_type == "indexer_FAISS_IndexFlatL2":
         serialized_index = persister.read_bin_file(f"{collection_name}/indexes/{indexer_name}/indexer")
         return FaissIndexer(indexer_name, __create_sentence_embedder(embedding_model), serialized_index)
+    
+    if indexer_type == "indexer_ChromaDb":
+        serialized_data = persister.read_bin_file(f"{collection_name}/indexes/{indexer_name}/indexer")
+        return ChromaIndexer(indexer_name, __create_sentence_embedder(embedding_model), serialized_data)
 
     raise ValueError(f"Unknown indexer name: {indexer_name}")
