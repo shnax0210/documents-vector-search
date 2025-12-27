@@ -1,18 +1,23 @@
 import json
 
 class DocumentCollectionSearcher:
-    def __init__(self, collection_name, indexer, persister):
+    def __init__(self, collection_name, indexer, persister, base_query=None):
         self.collection_name = collection_name
         self.indexer = indexer
         self.persister = persister
+        self.base_query = base_query
 
-    def search(self, text, 
+        if self.base_query and not indexer.support_metadata():
+            raise NotImplementedError(f"Base query works only with indexers that support metadata (chromadb), {self.indexer.get_name()} does not support it.")
+
+    def search(self, 
+               text, 
                max_number_of_chunks=15, 
                max_number_of_documents=None, 
                include_text_content=False, 
                include_all_chunks_content=False, 
                include_matched_chunks_content=False):
-        scores, indexes = self.indexer.search(text, max_number_of_chunks)
+        scores, indexes = self.__search_in_index(text, max_number_of_chunks)
 
         results = self.__build_results(scores, indexes, include_text_content, include_all_chunks_content, include_matched_chunks_content)
         if max_number_of_documents:
@@ -23,6 +28,12 @@ class DocumentCollectionSearcher:
             "indexerName": self.indexer.get_name(),
             "results": results,
         }
+
+    def __search_in_index(self, text, max_number_of_chunks):
+        if self.base_query:
+            return self.indexer.search(text, max_number_of_chunks, self.base_query)
+        
+        return self.indexer.search(text, max_number_of_chunks)
 
     def __build_results(self, scores, indexes, include_text_content, include_all_chunks_content, include_matched_chunks_content):
         indexes_base_path = f"{self.collection_name}/indexes"

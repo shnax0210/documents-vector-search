@@ -171,7 +171,10 @@ class DocumentCollectionCreator:
                     reverse_index_mapping[converted_document["id"]].append(last_index_item_id)
 
             for indexer in self.document_indexers:
-                indexer.index_texts(index_item_ids, items_to_index)
+                if indexer.support_metadata() and "metadata" in converted_document:
+                    indexer.index_texts(index_item_ids, items_to_index, metadata=converted_document["metadata"])
+                else:
+                    indexer.index_texts(index_item_ids, items_to_index)
 
         for indexer in self.document_indexers:
             self.persister.save_bin_file(indexer.serialize(), f"{self.__build_index_base_path(indexer)}/indexer")

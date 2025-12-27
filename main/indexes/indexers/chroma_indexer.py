@@ -1,3 +1,4 @@
+import json
 import chromadb
 import numpy as np
 import tempfile
@@ -31,13 +32,19 @@ class ChromaIndexer:
     def get_name(self) -> str:
         return self.name
 
-    def index_texts(self, ids: np.ndarray, texts: List[str]):
+    def index_texts(self, ids: np.ndarray, texts: List[str], metadata: Optional[dict] = None):
         embeddings = self.embedder.embed(texts)
         str_ids = [str(int(id_val)) for id_val in ids]
-        
+
+        if metadata is not None:
+            for key, value in metadata.items():
+                if not isinstance(value, (str, int, float, bool)):
+                    metadata[key] = str(value)
+
         self.__collection.add(
             ids=str_ids,
             embeddings=embeddings.tolist(),
+            metadatas=[metadata] * len(str_ids) if metadata else None
         )
 
     def remove_ids(self, ids: np.ndarray):
@@ -53,7 +60,7 @@ class ChromaIndexer:
         }
         return pickle.dumps(collection_data)
 
-    def search(self, text: str, number_of_results: int = 10) -> Tuple[np.ndarray, np.ndarray]:
+    def search(self, text: str, number_of_results: int = 10, base_query: Optional[str] = None) -> Tuple[np.ndarray, np.ndarray]:
         query_embedding = self.embedder.embed(text)
         
         collection_size = self.get_size()
@@ -62,7 +69,8 @@ class ChromaIndexer:
         
         results = self.__collection.query(
             query_embeddings=[query_embedding.tolist()],
-            n_results=min(number_of_results, collection_size)
+            n_results=min(number_of_results, collection_size),
+            where=json.loads(base_query) if base_query else None
         )
         
         if not results["ids"][0]:
@@ -75,6 +83,9 @@ class ChromaIndexer:
     
     def get_size(self) -> int:
         return self.__collection.count()
+    
+    def support_metadata(self) -> bool:
+        return True
     
     def __del__(self):
         if os.path.exists(self.__temp_dir):
