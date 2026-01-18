@@ -1,7 +1,7 @@
+import logging
 import requests
 
 from ...utils.retry import execute_with_retry
-from ...utils.batch import read_items_in_batches
 
 class JiraCloudDocumentReader:
     def __init__(self, 
@@ -35,13 +35,16 @@ class JiraCloudDocumentReader:
         return self.__read_items()
 
     def get_number_of_documents(self):
-        search_result = self.__request_items({
-            'jql': self.query, 
-            "startAt": 0, 
-            "maxResults": 1
-        })
-
-        return search_result['total']
+        search_result = self.__request_items(None)
+        total_count = 0
+        for _ in search_result['issues']:
+            total_count += 1
+        
+        while not search_result.get('isLast', True):
+            search_result = self.__request_items(search_result.get('nextPageToken'))
+            total_count += len(search_result['issues'])
+        
+        return total_count
 
     def get_reader_details(self) -> dict:
         return {
@@ -56,30 +59,42 @@ class JiraCloudDocumentReader:
         return self.base_url + relative_path
 
     def __read_items(self):
-        read_batch_func = lambda start_at, batch_size: self.__request_items({
-            'jql': self.query, 
-            "startAt": start_at, 
-            "maxResults": batch_size,
-            "fields": self.fields,
-        })
+        has_more_items = True
+        next_page_token = None
 
-        return read_items_in_batches(read_batch_func,
-                              fetch_items_from_result_func=lambda result: result['issues'],
-                              fetch_total_from_result_func=lambda result: result['total'],
-                              batch_size=self.batch_size,
-                              max_skipped_items_in_row=self.max_skipped_items_in_row)
+        while has_more_items:
+            read_result = self.__request_items(next_page_token)
 
-    def __request_items(self, params):
+            issues = read_result.get('issues', [])
+            
+            logging.debug(f"New batch with {len(issues)} items was read")
+
+            for issue in issues:
+                yield issue
+
+            next_page_token = read_result.get('nextPageToken')
+            has_more_items = not read_result.get('isLast', True)
+
+    def __request_items(self, next_page_token=None):
         def do_request():
-            response = requests.get(url=self.__add_url_prefix('/rest/api/3/search'), 
-                                    headers={
-                                        "Accept": "application/json",
-                                        "Content-Type": "application/json"
-                                    }, 
-                                    params=params, 
-                                    auth=(self.email, self.api_token))
+            params = {
+                'jql': self.query,
+                'fields': self.fields,
+            }
+            
+            if next_page_token:
+                params['nextPageToken'] = next_page_token
+            
+            response = requests.get(
+                url=self.__add_url_prefix('/rest/api/3/search/jql'), 
+                headers={
+                    "Accept": "application/json"
+                }, 
+                params=params, 
+                auth=(self.email, self.api_token)
+            )
             response.raise_for_status()
 
             return response.json()
 
-        return execute_with_retry(do_request, f"Requesting items with params: {params}", self.number_of_retries, self.retry_delay) 
+        return execute_with_retry(do_request, f"Requesting items with nextPageToken: {next_page_token}", self.number_of_retries, self.retry_delay) 

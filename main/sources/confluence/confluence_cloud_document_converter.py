@@ -1,7 +1,7 @@
 import os
 
 from bs4 import BeautifulSoup
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 class ConfluenceCloudDocumentConverter:
     def __init__(self):

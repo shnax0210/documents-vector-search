@@ -15,7 +15,7 @@ class FaissIndexer:
         return self.name
 
     def index_texts(self, ids, texts, metadata=None):
-        self.faiss_index.add_with_ids(self.embedder.embed(texts), ids)
+        self.faiss_index.add_with_ids(self.embedder.embed(texts), np.array(ids, dtype=np.int64))
 
     def remove_ids(self, ids):
         self.faiss_index.remove_ids(ids)
