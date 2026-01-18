@@ -23,7 +23,7 @@ class ChromaIndexer:
         
         if serialized_data is not None:
             collection_data = pickle.loads(serialized_data)
-            self.__collection.add(
+            self.__add_in_batches(
                 ids=collection_data["ids"],
                 embeddings=collection_data["embeddings"],
                 metadatas=collection_data["metadatas"]
@@ -36,7 +36,7 @@ class ChromaIndexer:
         embeddings = self.embedder.embed(texts)
         str_ids = [str(int(id_val)) for id_val in ids]
 
-        self.__collection.add(
+        self.__add_in_batches(
             ids=str_ids,
             embeddings=embeddings.tolist(),
             metadatas=items_metadata if items_metadata else None
@@ -81,6 +81,16 @@ class ChromaIndexer:
     
     def support_metadata(self) -> bool:
         return True
+    
+    def __add_in_batches(self, ids: List[str], embeddings: List[List[float]], metadatas: List[dict], batch_size: int = 5000):
+        total_items = len(ids)
+        for i in range(0, total_items, batch_size):
+            end_idx = min(i + batch_size, total_items)
+            self.__collection.add(
+                ids=ids[i:end_idx],
+                embeddings=embeddings[i:end_idx],
+                metadatas=metadatas[i:end_idx]
+            )
     
     def __del__(self):
         if os.path.exists(self.__temp_dir):

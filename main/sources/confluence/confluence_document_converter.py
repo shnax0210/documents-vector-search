@@ -15,6 +15,9 @@ class ConfluenceDocumentConverter:
             "id": document["page"]['id'],
             "url": self.__build_url(document["page"]),
             "modifiedTime": document["page"]['version']['when'],
+            "metadata": {
+                "space": document["page"]['space']['key'],
+            },
             "text": self.__build_document_text(document),
             "chunks": self.__split_to_chunks(document)
         }]
