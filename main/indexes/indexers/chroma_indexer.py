@@ -32,19 +32,14 @@ class ChromaIndexer:
     def get_name(self) -> str:
         return self.name
 
-    def index_texts(self, ids: np.ndarray, texts: List[str], metadata: Optional[dict] = None):
+    def index_texts(self, ids: np.ndarray, texts: List[str], items_metadata: list[Optional[dict]] = None):
         embeddings = self.embedder.embed(texts)
         str_ids = [str(int(id_val)) for id_val in ids]
-
-        if metadata is not None:
-            for key, value in metadata.items():
-                if not isinstance(value, (str, int, float, bool)):
-                    metadata[key] = str(value)
 
         self.__collection.add(
             ids=str_ids,
             embeddings=embeddings.tolist(),
-            metadatas=[metadata] * len(str_ids) if metadata else None
+            metadatas=items_metadata if items_metadata else None
         )
 
     def remove_ids(self, ids: np.ndarray):

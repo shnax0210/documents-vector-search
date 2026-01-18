@@ -14,7 +14,7 @@ ap.add_argument("-query", "--query", required=True, help="Text query for search"
 
 ap.add_argument("-filter", "--filter", required=False, default=None, help="Filter query for search. If chromadb used, it's passed to 'where' parameter to filter search results by metadata. Example: '{\"source\": {\"$eq\": \"desired_source_value\"}}'")
 
-ap.add_argument("-index", "--index", required=False, default="indexer_FAISS_IndexFlatL2__embeddings_all-MiniLM-L6-v2", help="Index that will be used for search")
+ap.add_argument("-index", "--index", required=False, default=None, help="Index that will be used for search")
 
 ap.add_argument("-maxNumberOfChunks", "--maxNumberOfChunks", required=False, type=int, default=None, help="Max number of text chunks in result")
 ap.add_argument("-maxNumberOfDocuments", "--maxNumberOfDocuments", required=False, type=int, default=10, help="Max number of documents in result")

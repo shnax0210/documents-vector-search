@@ -143,6 +143,7 @@ class DocumentCollectionCreator:
                                                                   progress_bar_name="Indexing batches of batches"):
             items_to_index = []
             index_item_ids = []
+            items_metadata = []
 
             for document_id in batch_document_ids:
                 document_path = f"{self.collection_name}/documents/{document_id}.json"
@@ -158,6 +159,7 @@ class DocumentCollectionCreator:
 
                     items_to_index.append(converted_document["chunks"][chunk_number]["indexedData"])
                     index_item_ids.append(last_index_item_id)
+                    items_metadata.append(converted_document.get("metadata", None))
 
                     index_mapping[last_index_item_id] = {
                         "documentId": converted_document["id"],
@@ -171,10 +173,7 @@ class DocumentCollectionCreator:
                     reverse_index_mapping[converted_document["id"]].append(last_index_item_id)
 
             for indexer in self.document_indexers:
-                if indexer.support_metadata() and "metadata" in converted_document:
-                    indexer.index_texts(index_item_ids, items_to_index, metadata=converted_document["metadata"])
-                else:
-                    indexer.index_texts(index_item_ids, items_to_index)
+                indexer.index_texts(index_item_ids, items_to_index, items_metadata=items_metadata)
 
         for indexer in self.document_indexers:
             self.persister.save_bin_file(indexer.serialize(), f"{self.__build_index_base_path(indexer)}/indexer")

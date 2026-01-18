@@ -39,16 +39,17 @@ class DocumentCollectionSearcher:
             mapping = index_document_mapping[str(indexes[0][result_number])]                   
 
             if mapping["documentId"] not in result:
+                document = self.__get_document(mapping["documentPath"])
                 result[mapping["documentId"]] = {
                     "id": mapping["documentId"],
                     "url": mapping["documentUrl"],
                     "path": mapping["documentPath"],
+                    "modifiedTime": document["modifiedTime"],
+                    "metadata": document["metadata"],
                     "matchedChunks": [self.__build_chunk_result(mapping, scores, result_number, include_matched_chunks_content)]
                 }
 
                 if include_all_chunks_content or include_text_content:
-                    document = self.__get_document(mapping["documentPath"])
-
                     if include_all_chunks_content:
                         result[mapping["documentId"]]["allChunks"] = document["chunks"]
 

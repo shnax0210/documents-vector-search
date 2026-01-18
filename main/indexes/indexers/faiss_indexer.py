@@ -1,5 +1,6 @@
 import faiss
 import numpy as np
+from typing import Optional
 
 
 class FaissIndexer:
@@ -14,7 +15,7 @@ class FaissIndexer:
     def get_name(self):
         return self.name
 
-    def index_texts(self, ids, texts, metadata=None):
+    def index_texts(self, ids, texts, items_metadata: list[Optional[dict]] = None):
         self.faiss_index.add_with_ids(self.embedder.embed(texts), np.array(ids, dtype=np.int64))
 
     def remove_ids(self, ids):
