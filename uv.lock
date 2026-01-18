@@ -525,7 +525,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "bs4", specifier = ">=0.0.2" },
-    { name = "chromadb", specifier = ">=1.0.20" },
+    { name = "chromadb", specifier = ">=1.4.1" },
     { name = "faiss-cpu", specifier = ">=1.13.2" },
     { name = "langchain-text-splitters", specifier = ">=1.1.0" },
     { name = "mcp", specifier = ">=1.25.0" },

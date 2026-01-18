@@ -60,7 +60,7 @@ class ChromaIndexer:
         }
         return pickle.dumps(collection_data)
 
-    def search(self, text: str, number_of_results: int = 10, base_query: Optional[str] = None) -> Tuple[np.ndarray, np.ndarray]:
+    def search(self, text: str, number_of_results: int = 10, filter: Optional[str] = None) -> Tuple[np.ndarray, np.ndarray]:
         query_embedding = self.embedder.embed(text)
         
         collection_size = self.get_size()
@@ -70,7 +70,7 @@ class ChromaIndexer:
         results = self.__collection.query(
             query_embeddings=[query_embedding.tolist()],
             n_results=min(number_of_results, collection_size),
-            where=json.loads(base_query) if base_query else None
+            where=json.loads(filter) if filter else None
         )
         
         if not results["ids"][0]:

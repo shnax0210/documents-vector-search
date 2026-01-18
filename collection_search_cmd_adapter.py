@@ -12,7 +12,7 @@ ap = argparse.ArgumentParser()
 ap.add_argument("-collection", "--collection", required=True, help="Collection name (will be used as root folder name)")
 ap.add_argument("-query", "--query", required=True, help="Text query for search")
 
-ap.add_argument("-baseQuery", "--baseQuery", required=False, default=None, help="Base query for search. If chromadb used, it's passed to 'where' parameter to filter search results by metadata. Example: '{\"source\": {\"$eq\": \"desired_source_value\"}}'")
+ap.add_argument("-filter", "--filter", required=False, default=None, help="Filter query for search. If chromadb used, it's passed to 'where' parameter to filter search results by metadata. Example: '{\"source\": {\"$eq\": \"desired_source_value\"}}'")
 
 ap.add_argument("-index", "--index", required=False, default="indexer_FAISS_IndexFlatL2__embeddings_all-MiniLM-L6-v2", help="Index that will be used for search")
 
@@ -24,7 +24,7 @@ ap.add_argument("-includeAllChunksText", "--includeAllChunksText", action="store
 ap.add_argument("-includeMatchedChunksText", "--includeMatchedChunksText", action="store_true", required=False, default=False, help="If passed - matched chunks text content will be included in the search result.")
 args = vars(ap.parse_args())
 
-searcher = create_collection_searcher(collection_name=args['collection'], index_name=args['index'], base_query=args['baseQuery'])
+searcher = create_collection_searcher(collection_name=args['collection'], index_name=args['index'], filter=args['filter'])
 
 max_number_of_chunks = args['maxNumberOfChunks'] if args['maxNumberOfChunks'] is not None else args['maxNumberOfDocuments'] * 3
 search_result = log_execution_duration(lambda: searcher.search(args['query'],

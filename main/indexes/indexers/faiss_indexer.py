@@ -23,7 +23,7 @@ class FaissIndexer:
     def serialize(self):
         return faiss.serialize_index(self.faiss_index)
 
-    def search(self, text, number_of_results=10, base_query=None):
+    def search(self, text, number_of_results=10, filter=None):
         return self.faiss_index.search(np.expand_dims(self.embedder.embed(text), axis=0), number_of_results)
 
     def support_metadata(self) -> bool:
