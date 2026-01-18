@@ -12,9 +12,15 @@ class JiraDocumentConverter:
             "id": document['key'],
             "url": self.__build_url(document),
             "modifiedTime": document['fields']['updated'],
+            "metadata": self.__build_metadata(document),
             "text": self.__build_document_text(document),
             "chunks": self.__split_to_chunks(document)
         }]
+    
+    def __build_metadata(self, document):
+        return {
+            "project": document['key'].split("-")[0]
+        }
     
     def __build_document_text(self, document):
         main_info = self.__build_main_ticket_info(document)

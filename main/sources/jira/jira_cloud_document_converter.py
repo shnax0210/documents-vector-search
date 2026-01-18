@@ -19,18 +19,7 @@ class JiraCloudDocumentConverter:
 
     def __build_metadata(self, document):
         return {
-            "project": document['key'].split("-")[0],
-            "status": document['fields']['status']['name'] if document['fields']['status'] else None,
-            "assignee": document['fields']['assignee']['emailAddress'] if document['fields']['assignee'] else None,
-            "reporter": document['fields']['reporter']['emailAddress'] if document['fields']['reporter'] else None,
-            "created": document['fields']['created'],
-            "updated": document['fields']['updated'],
-            "issueType": document['fields']['issuetype']['name'] if document['fields']['issuetype'] else None,
-            "priority": document['fields']['priority']['name'] if document['fields']['priority'] else None,
-            "labels": document['fields']['labels'],
-            "components": [component['name'] for component in document['fields']['components']] if document['fields']['components'] else [],
-            "fixVersions": [version['name'] for version in document['fields']['fixVersions']] if document['fields']['fixVersions'] else [],
-            "versions": [version['name'] for version in document['fields']['versions']] if document['fields']['versions'] else [],
+            "project": document['key'].split("-")[0]
         }
     
     def __build_document_text(self, document):
