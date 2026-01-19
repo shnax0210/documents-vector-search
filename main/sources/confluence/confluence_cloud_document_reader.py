@@ -15,7 +15,8 @@ class ConfluenceCloudDocumentReader:
                  number_of_retries=3, 
                  retry_delay=1, 
                  max_skipped_items_in_row=5,
-                 read_all_comments=False):
+                 read_all_comments=False,
+                 timeout=60):
         # "email" and "api_token" must be provided for Cloud
         if not email or not api_token:
             raise ValueError("Both 'email' and 'api_token' must be provided for Confluence Cloud.")
@@ -36,6 +37,7 @@ class ConfluenceCloudDocumentReader:
         self.retry_delay = retry_delay
         self.max_skipped_items_in_row = max_skipped_items_in_row
         self.read_all_comments = read_all_comments
+        self.timeout = timeout
     
     def read_all_documents(self):
         for page in self.__read_items():
@@ -127,7 +129,8 @@ class ConfluenceCloudDocumentReader:
                                         "Content-Type": "application/json"
                                     }, 
                                     params=params, 
-                                    auth=(self.email, self.api_token))
+                                    auth=(self.email, self.api_token),
+                                    timeout=self.timeout)
             response.raise_for_status()
 
             return response.json()

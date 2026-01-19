@@ -12,7 +12,8 @@ class JiraCloudDocumentReader:
                  batch_size=500,
                  number_of_retries=3,
                  retry_delay=1,
-                 max_skipped_items_in_row=5):
+                 max_skipped_items_in_row=5,
+                 timeout=60):
         # "email" and "api_token" must be provided for Cloud
         if not email or not api_token:
             raise ValueError("Both 'email' and 'api_token' must be provided for Jira Cloud.")
@@ -29,6 +30,7 @@ class JiraCloudDocumentReader:
         self.number_of_retries = number_of_retries
         self.retry_delay = retry_delay
         self.max_skipped_items_in_row = max_skipped_items_in_row
+        self.timeout = timeout
         self.fields = "summary,description,comment,updated,status,priority,labels,components,fixVersions,versions,assignee,reporter,issuetype,created"
 
     def read_all_documents(self):
@@ -91,7 +93,8 @@ class JiraCloudDocumentReader:
                     "Accept": "application/json"
                 }, 
                 params=params, 
-                auth=(self.email, self.api_token)
+                auth=(self.email, self.api_token),
+                timeout=self.timeout
             )
             response.raise_for_status()
 

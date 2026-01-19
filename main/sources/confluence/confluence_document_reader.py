@@ -14,7 +14,8 @@ class ConfluenceDocumentReader:
                  number_of_retries=3, 
                  retry_delay=1, 
                  max_skipped_items_in_row=5,
-                 read_all_comments=False):
+                 read_all_comments=False,
+                 timeout=60):
         # "token" or "login" and "password" must be provided
         if not token and (not login or not password):
             raise ValueError("Either 'token' or both 'login' and 'password' must be provided.")
@@ -32,6 +33,7 @@ class ConfluenceDocumentReader:
         self.retry_delay = retry_delay
         self.max_skipped_items_in_row = max_skipped_items_in_row
         self.read_all_comments = read_all_comments
+        self.timeout = timeout
     
     def read_all_documents(self):
         for page in self.__read_items():
@@ -121,7 +123,8 @@ class ConfluenceDocumentReader:
                                         **({"Authorization": f"Bearer {self.token}"} if self.token else {})
                                     }, 
                                     params=params, 
-                                    auth=((self.login, self.password) if self.login and self.password else None))
+                                    auth=((self.login, self.password) if self.login and self.password else None),
+                                    timeout=self.timeout)
             response.raise_for_status()
             return response.json()
 
