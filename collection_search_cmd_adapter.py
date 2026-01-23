@@ -12,7 +12,7 @@ ap = argparse.ArgumentParser()
 ap.add_argument("-collection", "--collection", required=True, help="Collection name (will be used as root folder name)")
 ap.add_argument("-query", "--query", required=True, help="Text query for search")
 
-ap.add_argument("-filter", "--filter", required=False, default=None, help="Filter query for search. If chromadb used, it's passed to 'where' parameter to filter search results by metadata. Example: '{\"source\": {\"$eq\": \"desired_source_value\"}}'")
+ap.add_argument("-filter", "--filter", required=False, default=None, help="""Filter query for search. If chromadb used, it's passed to 'where' parameter to filter search results by metadata. Example: '{"space": {"$eq": "SPACE_KEY"}}'""")
 
 ap.add_argument("-index", "--index", required=False, default=None, help="Index that will be used for search")
 
