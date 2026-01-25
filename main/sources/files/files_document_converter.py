@@ -12,6 +12,7 @@ class FilesDocumentConverter:
             "id": document['fileRelativePath'],
             "url": self.__build_url(document),
             "metadata": {
+                "createdAt": document['createdTime'],
                 "lastModifiedAt": document['modifiedTime'],
             },
             "text": self.__build_document_text(document),
