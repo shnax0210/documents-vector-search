@@ -5,7 +5,9 @@ import tempfile
 import shutil
 import os
 import pickle
+import re
 from typing import List, Tuple, Optional
+from datetime import datetime
 
 
 class ChromaIndexer:
@@ -32,14 +34,14 @@ class ChromaIndexer:
     def get_name(self) -> str:
         return self.name
 
-    def index_texts(self, ids: np.ndarray, texts: List[str], items_metadata: list[Optional[dict]] = None):
+    def index_texts(self, ids: np.ndarray, texts: List[str], items_metadata: list[dict] = None):
         embeddings = self.embedder.embed(texts)
         str_ids = [str(int(id_val)) for id_val in ids]
 
         self.__add_in_batches(
             ids=str_ids,
             embeddings=embeddings.tolist(),
-            metadatas=items_metadata if items_metadata else None
+            metadatas=self.__adjust_metadata(items_metadata)
         )
 
     def remove_ids(self, ids: np.ndarray):
@@ -65,7 +67,7 @@ class ChromaIndexer:
         results = self.__collection.query(
             query_embeddings=[query_embedding.tolist()],
             n_results=min(number_of_results, collection_size),
-            where=json.loads(filter) if filter else None
+            where=self.__adjust_filter(filter)
         )
         
         if not results["ids"][0]:
@@ -82,6 +84,60 @@ class ChromaIndexer:
     def support_metadata(self) -> bool:
         return True
     
+    def __adjust_metadata(self, items_metadata: List[dict]) -> List[dict]:
+        adjusted_metadata = []
+        for metadata in items_metadata:
+            adjusted = metadata.copy()
+            if "lastModifiedAt" in metadata:
+                adjusted["lastModifiedAt"] = self.__convert_iso_to_timestamp(metadata["lastModifiedAt"])
+            if "createdAt" in metadata:
+                adjusted["createdAt"] = self.__convert_iso_to_timestamp(metadata["createdAt"])
+            
+            for key, value in adjusted.items():
+                if value is None:
+                    adjusted[key] = "None"
+
+            adjusted_metadata.append(adjusted)
+
+        return adjusted_metadata
+    
+    def __convert_iso_to_timestamp(self, time_value: str) -> int:
+        if time_value.endswith('Z'):
+            time_value = time_value[:-1] + '+00:00'
+        return int(datetime.fromisoformat(time_value).timestamp())
+    
+    def __adjust_filter(self, filter):
+        if filter is None:
+            return None
+
+        adjusted_filter = filter
+        adjusted_filter = self.__adjust_time_field_in_filter(adjusted_filter, "createdAt")
+        adjusted_filter = self.__adjust_time_field_in_filter(adjusted_filter, "lastModifiedAt")
+
+        print(f"Adjusted filter: {adjusted_filter}")
+        
+        return json.loads(adjusted_filter)
+    
+    def __adjust_time_field_in_filter(self, filter: str, field_name: str) -> str:
+        field_pattern = rf'"{field_name}"\s*:\s*(\{{[^}}]*\}}|"[^"]*")'
+        iso_date_pattern = r'"(\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?)?)"'
+        
+        def replace_in_field(match):
+            field_content = match.group(0)
+            print(f"Adjusting {field_name} filter content: {field_content}")
+            
+            def replace_date(date_match):
+                date_str = date_match.group(1)
+                try:
+                    timestamp = self.__convert_iso_to_timestamp(date_str)
+                    return str(timestamp)
+                except (ValueError, AttributeError):
+                    raise ValueError(f"Invalid date format in {field_name} filter: '{date_str}'. Expected ISO format date.")
+            
+            return re.sub(iso_date_pattern, replace_date, field_content)
+        
+        return re.sub(field_pattern, replace_in_field, filter)
+
     def __add_in_batches(self, ids: List[str], embeddings: List[List[float]], metadatas: List[dict], batch_size: int = 5000):
         total_items = len(ids)
         for i in range(0, total_items, batch_size):

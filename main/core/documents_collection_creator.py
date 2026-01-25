@@ -150,7 +150,7 @@ class DocumentCollectionCreator:
 
                 converted_document = json.loads(self.persister.read_text_file(document_path))
 
-                modified_document_time = datetime.fromisoformat(converted_document["modifiedTime"])
+                modified_document_time = datetime.fromisoformat(self.__get_modified_time(converted_document))
                 if last_modified_document_time is None or last_modified_document_time < modified_document_time:
                     last_modified_document_time = modified_document_time
 
@@ -184,6 +184,16 @@ class DocumentCollectionCreator:
         self.__save_json_file(reverse_index_mapping, self.__build_reverse_index_mapping_path())
 
         return last_modified_document_time, self.document_indexers[0].get_size()
+
+    def __get_modified_time(self, converted_document):
+        if "metadata" in converted_document and "lastModifiedAt" in converted_document["metadata"]:
+            return converted_document["metadata"]["lastModifiedAt"]
+        
+        # It's for backwards compatibility
+        if "modifiedTime" in converted_document:
+            return converted_document["modifiedTime"]
+        
+        raise ValueError(f"Cannot determine modified time for document with id: {converted_document['id']}")
 
     def __remove_documents_from_index(self, document_ids, index_mapping, reverse_index_mapping):
         for batch_document_ids in wrap_iterator_with_progress_bar(self.__batch_items(document_ids, 

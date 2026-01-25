@@ -11,7 +11,9 @@ class FilesDocumentConverter:
         return [{
             "id": document['fileRelativePath'],
             "url": self.__build_url(document),
-            "modifiedTime": document['modifiedTime'],
+            "metadata": {
+                "lastModifiedAt": document['modifiedTime'],
+            },
             "text": self.__build_document_text(document),
             "chunks": self.__split_to_chunks(document)
         }]

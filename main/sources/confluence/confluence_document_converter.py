@@ -14,8 +14,11 @@ class ConfluenceDocumentConverter:
         return [{
             "id": document["page"]['id'],
             "url": self.__build_url(document["page"]),
-            "modifiedTime": document["page"]['version']['when'],
             "metadata": {
+                "createdAt": document["page"]['history']['createdDate'],
+                "createdBy": self.__get_user_email(document["page"]['history']['createdBy']),
+                "lastModifiedAt": document["page"]['version']['when'],
+                #"lastModifiedBy": self.__get_user_email(document["page"]['version']['by']),
                 "space": document["page"]['space']['key'],
             },
             "text": self.__build_document_text(document),
@@ -67,3 +70,10 @@ class ConfluenceDocumentConverter:
     def __build_url(self, page):
         base_url = page['_links']['self'].split("/rest/api/")[0]
         return f"{base_url}{page['_links']['webui']}"
+    
+    def __get_user_email(self, user):
+        if user and 'username' in user:
+            return user['username'].lower()
+        if user and 'displayName' in user:
+            return user['displayName']
+        return None

@@ -28,7 +28,7 @@ class ConfluenceDocumentReader:
         self.batch_size = batch_size
         # Confluence has hierarchical comments, we can read first level by adding "children.comment.body.storage" to "expand" parameter
         # but to read all comments we need to make additional request with "depth=all" parameter
-        self.expand = "body.storage,ancestors,version,space,children.comment" if read_all_comments else "body.storage,ancestors,version,space,children.comment.body.storage"
+        self.expand = "body.storage,ancestors,version,space,history,children.comment" if read_all_comments else "body.storage,ancestors,version,space,history,children.comment.body.storage"
         self.number_of_retries = number_of_retries
         self.retry_delay = retry_delay
         self.max_skipped_items_in_row = max_skipped_items_in_row

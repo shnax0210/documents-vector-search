@@ -31,7 +31,7 @@ class JiraCloudDocumentReader:
         self.retry_delay = retry_delay
         self.max_skipped_items_in_row = max_skipped_items_in_row
         self.timeout = timeout
-        self.fields = "summary,description,comment,updated,status,priority,labels,components,fixVersions,versions,assignee,reporter,issuetype,created"
+        self.fields = "summary,description,comment,created,updated,epic,parent,status,priority,assignee,reporter,issuetype"
 
     def read_all_documents(self):
         return self.__read_items()

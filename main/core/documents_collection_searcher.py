@@ -44,7 +44,6 @@ class DocumentCollectionSearcher:
                     "id": mapping["documentId"],
                     "url": mapping["documentUrl"],
                     "path": mapping["documentPath"],
-                    "modifiedTime": document["modifiedTime"],
                     "metadata": document.get("metadata"),
                     "matchedChunks": [self.__build_chunk_result(mapping, scores, result_number, include_matched_chunks_content)]
                 }
