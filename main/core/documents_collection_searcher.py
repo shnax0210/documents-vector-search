@@ -1,18 +1,23 @@
 import json
 
 class DocumentCollectionSearcher:
-    def __init__(self, collection_name, indexer, persister):
+    def __init__(self, collection_name, indexer, persister, filter=None):
         self.collection_name = collection_name
         self.indexer = indexer
         self.persister = persister
+        self.filter = filter
 
-    def search(self, text, 
+        if self.filter and not indexer.support_metadata():
+            raise NotImplementedError(f"Filter works only with indexers that support metadata (chromadb), {self.indexer.get_name()} does not support it.")
+
+    def search(self, 
+               text, 
                max_number_of_chunks=15, 
                max_number_of_documents=None, 
                include_text_content=False, 
                include_all_chunks_content=False, 
                include_matched_chunks_content=False):
-        scores, indexes = self.indexer.search(text, max_number_of_chunks)
+        scores, indexes = self.indexer.search(text, max_number_of_chunks, self.filter)
 
         results = self.__build_results(scores, indexes, include_text_content, include_all_chunks_content, include_matched_chunks_content)
         if max_number_of_documents:
@@ -34,16 +39,16 @@ class DocumentCollectionSearcher:
             mapping = index_document_mapping[str(indexes[0][result_number])]                   
 
             if mapping["documentId"] not in result:
+                document = self.__get_document(mapping["documentPath"])
                 result[mapping["documentId"]] = {
                     "id": mapping["documentId"],
                     "url": mapping["documentUrl"],
                     "path": mapping["documentPath"],
+                    "metadata": document.get("metadata"),
                     "matchedChunks": [self.__build_chunk_result(mapping, scores, result_number, include_matched_chunks_content)]
                 }
 
                 if include_all_chunks_content or include_text_content:
-                    document = self.__get_document(mapping["documentPath"])
-
                     if include_all_chunks_content:
                         result[mapping["documentId"]]["allChunks"] = document["chunks"]
 

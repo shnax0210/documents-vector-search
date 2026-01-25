@@ -16,7 +16,7 @@ ap.add_argument("-collection", "--collection", required=True, help="Collection n
 ap.add_argument("-url", "--url", required=True, help="Jira base url (Cloud: https://your-domain.atlassian.net, Server/Data Center: https://jira.example.com)")
 ap.add_argument("-jql", "--jql", required=True, help="Jira query (JQL) to get tickets for indexing")
 
-ap.add_argument("-indexers", "--indexers", required=False, default=["indexer_FAISS_IndexFlatL2__embeddings_all-MiniLM-L6-v2"], help="list on indexer names", nargs='+')
+ap.add_argument("-indexers", "--indexers", required=False, default=["indexer_ChromaDb__embeddings_all-MiniLM-L6-v2"], help="list on indexer names", nargs='+')
 args = vars(ap.parse_args())
 
 # Detect if it's Jira Cloud or Server/Data Center based on URL

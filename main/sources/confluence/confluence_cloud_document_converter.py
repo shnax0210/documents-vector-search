@@ -14,7 +14,13 @@ class ConfluenceCloudDocumentConverter:
         return [{
             "id": document["page"]["content"]['id'],
             "url": self.__build_url(document["page"]["content"]),
-            "modifiedTime": document["page"]["content"]['version']['when'],
+            "metadata": {
+                "createdAt": document["page"]["content"]['history']['createdDate'],
+                "createdBy": self.__get_user_email(document["page"]["content"]['history']['createdBy']),
+                "lastModifiedAt": document["page"]["content"]['version']['when'],
+                #"lastModifiedBy": self.__get_user_email(document["page"]["content"]['version']['by']),
+                "space": document["page"]["content"]['space']['key'],
+            },
             "text": self.__build_document_text(document),
             "chunks": self.__split_to_chunks(document)
         }]
@@ -63,4 +69,12 @@ class ConfluenceCloudDocumentConverter:
     
     def __build_url(self, page):
         base_url = page['_links']['self'].split("/rest/api/")[0]
-        return f"{base_url}{page['_links']['webui']}" 
+        return f"{base_url}{page['_links']['webui']}"
+    
+    def __get_user_email(self, user):
+        if user and 'email' in user:
+            return user['email'].lower()
+        if user and 'displayName' in user:
+            return user['displayName']
+        return None
+ 

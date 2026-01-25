@@ -15,6 +15,8 @@ ap = argparse.ArgumentParser()
 ap.add_argument("-collection", "--collection", required=True, help="Collection name (will be used as root folder name)")
 ap.add_argument("-index", "--index", required=False, default=None, help="Index that will be used for search")
 
+ap.add_argument("-filter", "--filter", required=False, default=None, help="""Filter query for search. If chromadb used, it's passed to 'where' parameter to filter search results by metadata. Example: '{"space": "SPACE_KEY"}'""")
+
 ap.add_argument("-maxNumberOfChunks", "--maxNumberOfChunks", required=False, type=int, default=100, help="Max number of text chunks in result")
 ap.add_argument("-maxNumberOfDocuments", "--maxNumberOfDocuments", required=False, type=int, default=None, help="Max number of documents in result")
 

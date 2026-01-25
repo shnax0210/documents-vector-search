@@ -14,7 +14,7 @@ class FaissIndexer:
     def get_name(self):
         return self.name
 
-    def index_texts(self, ids, texts):
+    def index_texts(self, ids, texts, items_metadata: list[dict] = None):
         self.faiss_index.add_with_ids(self.embedder.embed(texts), np.array(ids, dtype=np.int64))
 
     def remove_ids(self, ids):
@@ -23,8 +23,11 @@ class FaissIndexer:
     def serialize(self):
         return faiss.serialize_index(self.faiss_index)
 
-    def search(self, text, number_of_results=10):
+    def search(self, text, number_of_results=10, filter=None):
         return self.faiss_index.search(np.expand_dims(self.embedder.embed(text), axis=0), number_of_results)
-    
+
+    def support_metadata(self) -> bool:
+        return False
+
     def get_size(self):
         return self.faiss_index.ntotal

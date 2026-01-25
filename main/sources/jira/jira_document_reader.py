@@ -13,7 +13,8 @@ class JiraDocumentReader:
                  batch_size=500,
                  number_of_retries=3,
                  retry_delay=1,
-                 max_skipped_items_in_row=5):
+                 max_skipped_items_in_row=5,
+                 timeout=60):
         # "token" or "login" and "password" must be provided
         if not token and (not login or not password):
             raise ValueError("Either 'token' or both 'login' and 'password' must be provided.")
@@ -27,7 +28,8 @@ class JiraDocumentReader:
         self.number_of_retries = number_of_retries
         self.retry_delay = retry_delay
         self.max_skipped_items_in_row = max_skipped_items_in_row
-        self.fields = "summary,description,comment,updated"
+        self.timeout = timeout
+        self.fields = "summary,description,comment,created,updated,epic,parent,status,priority,assignee,reporter,issuetype"
 
     def read_all_documents(self):
         return self.__read_items()
@@ -77,7 +79,8 @@ class JiraDocumentReader:
                                         **({"Authorization": f"Bearer {self.token}"} if self.token else {})
                                     }, 
                                     params=params, 
-                                    auth=((self.login, self.password) if self.login and self.password else None))
+                                    auth=((self.login, self.password) if self.login and self.password else None),
+                                    timeout=self.timeout)
             response.raise_for_status()
             return response.json()
 

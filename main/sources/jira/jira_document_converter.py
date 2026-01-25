@@ -11,7 +11,17 @@ class JiraDocumentConverter:
         return [{
             "id": document['key'],
             "url": self.__build_url(document),
-            "modifiedTime": document['fields']['updated'],
+            "metadata": {
+                "createdAt": document['fields']['created'],
+                "createdBy": self.__get_reporter(document),
+                "lastModifiedAt": document['fields']['updated'],
+                "project": document['key'].split("-")[0],
+                "type": self.__get_type(document),
+                "epic": self.__get_epic(document),
+                "priority": self.__get_priority(document),
+                "assignee": self.__get_assignee(document),
+                "status": self.__get_status(document),      
+            },
             "text": self.__build_document_text(document),
             "chunks": self.__split_to_chunks(document)
         }]
@@ -33,7 +43,6 @@ class JiraDocumentConverter:
                 chunks.append({
                     "indexedData": chunk
                 })
-        
             
         return chunks
 
@@ -48,6 +57,41 @@ class JiraDocumentConverter:
 
     def __convert_to_text(self, elements, delimiter="\n\n"):
         return delimiter.join([element for element in elements if element])
+    
+    def __get_epic(self, document):
+        epic = document['fields'].get('epic')
+        if epic:
+            return epic.get('key')
+        parent = document['fields'].get('parent')
+        if parent:
+            return parent.get('key')
+        return None
+    
+    def __get_status(self, document):
+        status = document['fields'].get('status')
+        return status.get('name') if status else None
+    
+    def __get_priority(self, document):
+        priority = document['fields'].get('priority')
+        return priority.get('name') if priority else None
+    
+    def __get_assignee(self, document):
+        assignee = document['fields'].get('assignee')
+        if assignee:
+            email = assignee.get('emailAddress')
+            return email.lower() if email else None
+        return None
+    
+    def __get_reporter(self, document):
+        reporter = document['fields'].get('reporter')
+        if reporter:
+            email = reporter.get('emailAddress')
+            return email.lower() if email else None
+        return None
+    
+    def __get_type(self, document):
+        issue_type = document['fields'].get('issuetype')
+        return issue_type.get('name') if issue_type else None
     
     def __build_url(self, document):
         base_url = document['self'].split("/rest/api/")[0]

@@ -1,6 +1,8 @@
 # Project allows document indexing in a local vector database and then search (supports Jira, Confluence and local files, can be integrated via MCP)
 
 - [Base info](#base-info)
+- [Updates](#updates)
+  - [2026/01/25 - Added ChromaDB and metafields filtering](#20260125---added-chromadb-and-metafields-filtering)
 - [Common use case](#common-use-case)
 - [How to set up and use](#how-to-set-up-and-use)
   - [Create collection for Confluence](#create-collection-for-confluence)
@@ -8,6 +10,9 @@
   - [Create collection for local files](#create-collection-for-local-files)
   - [Update existing collection](#update-existing-collection)
   - [Search in collection](#search-in-collection)
+    - [Filtering by metafields](#filtering-by-metafields)
+      - [Confluence](#confluence)
+      - [Jira](#jira)
   - [Set up MCP](#set-up-mcp)
 - [Collection structure](#collection-structure)
 - [Other useful info](#other-useful-info)
@@ -23,7 +28,8 @@ Key points:
 - Provides an abstraction to add more data sources and to use different technologies (embeddings, vector databases, etc.).
 
 Key technologies used:
-- "FAISS" lib (https://github.com/facebookresearch/faiss) for vector search;
+- "ChromaDB" lib (https://github.com/chroma-core/chroma) for vector search;
+- "FAISS" lib (https://github.com/facebookresearch/faiss) for vector search (alternative to ChromaDb);
 - "sentence-transformers" lib (https://pypi.org/project/sentence-transformers/) for embeddings;
 - "Unstructured" lib: https://github.com/Unstructured-IO/unstructured;
 - "LangChain" lib: https://python.langchain.com/docs/introduction/.
@@ -35,13 +41,17 @@ Communication:
 - if you see some issues or improvements, please log them here: https://github.com/shnax0210/documents-vector-search/issues
 - if you want to chat me, please find me on [LinkedIn](https://www.linkedin.com/in/oleksii-shnepov-841447158/)
 
+## Updates
+
+### 2026/01/25 - Added ChromaDB and metafields filtering
+
+As from the beginning FAISS lib was used as a vector database. ChromaDB was added since it has abilities to filter search results by metafields, which can be pretty convenient for the tool. For example, Confluence search results now can be filtered by space or modification time as of now by using the ChromaDb instead of FAISS. Currently ChromaDb is used by default, but if you still want to use FAISS, just pass `--indexes "indexer_FAISS_IndexFlatL2__embeddings_all-MiniLM-L6-v2"` during collection creation.
+
 ## Common use case
 1) You create a collection by a dedicated script (there are separate scripts for Jira, Confluence and local files cases). During the collection creation, data are loaded into your local machine and then indexed. Results are stored in a subfolder of `./data/collections` with the name that you specify via the "--collection ${collectionName}" parameter. So a collection is just a folder with all needed information for search, such as: loaded documents, index files, metadata, etc. Once a collection is created, it can be used for search and update. The creation process can take a while; it depends on the number of documents your collection consists of and local machine resources.
 2) After some time, you may want to update existing collections to get new data, you can do it via a dedicated script. You will need to specify the collection name used during collection creation. Collection update reads and indexes only new/updated documents, so it should be much faster than collection creation.
 3) You can search in an existing collection by dedicated script.
 4) You can set up MCP tool for existing collection, so an AI agent will be able to use the search.
-
-You can create different collections for different use cases. For example, you can create a collection for all Confluence pages to do a general search, and you can create a collection for pages from a specific Confluence space, so you will do a more narrow search.
 
 ## How to set up and use
 
@@ -134,6 +144,37 @@ Notes:
 - Please update ${collectionName} to the real collection name (the one used during collection creation), for example: "confluence" or "jira";
 - Please update ${searchQuery} to the text that you would like to search, for example: "How to set up react project locally";
 - You can add the "--includeMatchedChunksText" parameter to include matched chunks of a document text in search results.
+- You can use "--filter" parametr to add filtering by metafields.
+
+#### Filtering by metafields
+
+##### Confluence
+Available metafields:
+- createdAt: date when page was created.
+- createdBy: lowercased user email who created a page;
+- lastModifiedAt: last date when page was updated;
+- space: space key.
+
+Examples:
+- `--filter '{"space": "SPACE_KEY"}'`
+- `--filter '{"$and": [{"space": "SPACE_KEY"}, {"lastModifiedAt": {"$gte": "2026-01-01"}}]}'`
+
+##### Jira
+Available metafields:
+- createdAt: date when issue was created;
+- createdBy: lowercased user email who created an issue;
+- lastModifiedAt: last date when issue was updated;
+- project: project key (extracted from issue key);
+- type: issue type name (e.g., Bug, Task, Story);
+- epic: epic key or parent issue key;
+- priority: priority name (e.g., High, Medium, Low);
+- assignee: lowercased assignee email;
+- status: status name (e.g., Open, In Progress, Done).
+
+Examples:
+- `--filter '{"project": "PROJECT_KEY"}'`
+- `--filter '{"$and": [{"project": "PROJECT_KEY"}, {"lastModifiedAt": {"$gte": "2026-01-01"}}]}'`
+
 
 ### Set up MCP:
 
@@ -168,6 +209,7 @@ Notes:
 - Please update ${collectionName} to the real collection name (the one used during collection creation), for example: "confluence" or "jira".
 - Please update ${fullPathToRootProjectFolder} to the real full path to this project root folder.
 - It can be useful to increase the number of returned matched text chunks by setting "--maxNumberOfChunks ${number}". A bigger number means better search, but too large a number may break GitHub Copilot, probably because it does not fit into the model context window.
+- You can use "--filter" parametr to add filtering by metafields (check [Filtering by metafields](#filtering-by-metafields) for more details).
 
 Prompt examples:
 - "Find information about AI use cases, search info on Confluence, include all used links in response"

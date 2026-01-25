@@ -143,13 +143,14 @@ class DocumentCollectionCreator:
                                                                   progress_bar_name="Indexing batches of batches"):
             items_to_index = []
             index_item_ids = []
+            items_metadata = []
 
             for document_id in batch_document_ids:
                 document_path = f"{self.collection_name}/documents/{document_id}.json"
 
                 converted_document = json.loads(self.persister.read_text_file(document_path))
 
-                modified_document_time = datetime.fromisoformat(converted_document["modifiedTime"])
+                modified_document_time = datetime.fromisoformat(self.__get_modified_time(converted_document))
                 if last_modified_document_time is None or last_modified_document_time < modified_document_time:
                     last_modified_document_time = modified_document_time
 
@@ -158,6 +159,7 @@ class DocumentCollectionCreator:
 
                     items_to_index.append(converted_document["chunks"][chunk_number]["indexedData"])
                     index_item_ids.append(last_index_item_id)
+                    items_metadata.append(converted_document.get("metadata", None))
 
                     index_mapping[last_index_item_id] = {
                         "documentId": converted_document["id"],
@@ -171,7 +173,7 @@ class DocumentCollectionCreator:
                     reverse_index_mapping[converted_document["id"]].append(last_index_item_id)
 
             for indexer in self.document_indexers:
-                indexer.index_texts(index_item_ids, items_to_index)
+                indexer.index_texts(index_item_ids, items_to_index, items_metadata=items_metadata)
 
         for indexer in self.document_indexers:
             self.persister.save_bin_file(indexer.serialize(), f"{self.__build_index_base_path(indexer)}/indexer")
@@ -182,6 +184,16 @@ class DocumentCollectionCreator:
         self.__save_json_file(reverse_index_mapping, self.__build_reverse_index_mapping_path())
 
         return last_modified_document_time, self.document_indexers[0].get_size()
+
+    def __get_modified_time(self, converted_document):
+        if "metadata" in converted_document and "lastModifiedAt" in converted_document["metadata"]:
+            return converted_document["metadata"]["lastModifiedAt"]
+        
+        # It's for backwards compatibility
+        if "modifiedTime" in converted_document:
+            return converted_document["modifiedTime"]
+        
+        raise ValueError(f"Cannot determine modified time for document with id: {converted_document['id']}")
 
     def __remove_documents_from_index(self, document_ids, index_mapping, reverse_index_mapping):
         for batch_document_ids in wrap_iterator_with_progress_bar(self.__batch_items(document_ids, 
