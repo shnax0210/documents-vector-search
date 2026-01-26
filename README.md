@@ -148,6 +148,8 @@ Notes:
 
 #### Filtering by metafields
 
+Filtering is available only for ChromaDB. Query syntax: https://cookbook.chromadb.dev/core/filters/
+
 ##### Confluence
 Available metafields:
 - createdAt: date when page was created.
