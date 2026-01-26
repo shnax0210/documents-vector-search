@@ -147,8 +147,8 @@ class FilesDocumentReader:
             yield {
                "fileRelativePath": os.path.relpath(file_path, self.base_path),
                "fileFullPath": file_path,
-               "modifiedTime": self.__read_file_modification_time(file_path).isoformat(),
-               "createdTime": self.__read_file_creation_time(file_path).isoformat(),
+               "createdTime": self.__read_file_creation_time(file_path).isoformat(timespec='seconds'),
+               "modifiedTime": self.__read_file_modification_time(file_path).isoformat(timespec='seconds'),
                "content": file_content
             }
         
