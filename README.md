@@ -144,7 +144,7 @@ Notes:
 - Please update ${collectionName} to the real collection name (the one used during collection creation), for example: "confluence" or "jira";
 - Please update ${searchQuery} to the text that you would like to search, for example: "How to set up react project locally";
 - You can add the "--includeMatchedChunksText" parameter to include matched chunks of a document text in search results.
-- You can use "--filter" parametr to add filtering by metafields.
+- You can use "--filter" parameter to add filtering by metafields.
 
 #### Filtering by metafields
 
@@ -211,7 +211,7 @@ Notes:
 - Please update ${collectionName} to the real collection name (the one used during collection creation), for example: "confluence" or "jira".
 - Please update ${fullPathToRootProjectFolder} to the real full path to this project root folder.
 - It can be useful to increase the number of returned matched text chunks by setting "--maxNumberOfChunks ${number}". A bigger number means better search, but too large a number may break GitHub Copilot, probably because it does not fit into the model context window.
-- You can use "--filter" parametr to add filtering by metafields (check [Filtering by metafields](#filtering-by-metafields) for more details).
+- You can use "--filter" parameter to add filtering by metafields (check [Filtering by metafields](#filtering-by-metafields) for more details).
 
 Prompt examples:
 - "Find information about AI use cases, search info on Confluence, include all used links in response"
