@@ -47,6 +47,8 @@ Communication:
 
 As from the beginning FAISS lib was used as a vector database. ChromaDB was added since it has abilities to filter search results by metafields, which can be pretty convenient for the tool. For example, Confluence search results can be filtered by space or modification time. As of now ChromaDb is used by default, but if you still want to use FAISS (it has a bit better performance), just pass `--indexes "indexer_FAISS_IndexFlatL2__embeddings_all-MiniLM-L6-v2"` during collection creation.
 
+Filtering uses a common syntax that works across all indexers that support metadata (ChromaDB and SQLite BM25). Example: `--filter 'space = "SPACE_KEY" and lastModifiedAt > "2026-01-01"'`.
+
 ## Common use case
 1) You create a collection by a dedicated script (there are separate scripts for Jira, Confluence and local files cases). During the collection creation, data are loaded into your local machine and then indexed. Results are stored in a subfolder of `./data/collections` with the name that you specify via the "--collection ${collectionName}" parameter. So a collection is just a folder with all needed information for search, such as: loaded documents, index files, metadata, etc. Once a collection is created, it can be used for search and update. The creation process can take a while; it depends on the number of documents your collection consists of and local machine resources.
 2) After some time, you may want to update existing collections to get new data, you can do it via a dedicated script. You will need to specify the collection name used during collection creation. Collection update reads and indexes only new/updated documents, so it should be much faster than collection creation.
@@ -148,7 +150,16 @@ Notes:
 
 #### Filtering by metafields
 
-Filtering is available only for ChromaDB. Query syntax: https://cookbook.chromadb.dev/core/filters/
+Filtering is available for ChromaDB and SQLite BM25 indexers. The filter uses a common syntax:
+```
+field = "value"
+field operator "value"
+condition and condition
+condition or condition
+```
+
+Supported operators: `=`, `!=`, `>`, `>=`, `<`, `<=`.
+Multiple conditions can be joined with `and` or `or` (mixing `and` and `or` in one filter is not supported).
 
 ##### Confluence
 Available metafields:
@@ -158,8 +169,8 @@ Available metafields:
 - space: space key.
 
 Examples:
-- `--filter '{"space": "SPACE_KEY"}'`
-- `--filter '{"$and": [{"space": "SPACE_KEY"}, {"lastModifiedAt": {"$gte": "2026-01-01"}}]}'`
+- `--filter 'space = "SPACE_KEY"'`
+- `--filter 'space = "SPACE_KEY" and lastModifiedAt > "2026-01-01"'`
 
 ##### Jira
 Available metafields:
@@ -174,8 +185,8 @@ Available metafields:
 - status: status name (e.g., Open, In Progress, Done).
 
 Examples:
-- `--filter '{"project": "PROJECT_KEY"}'`
-- `--filter '{"$and": [{"project": "PROJECT_KEY"}, {"lastModifiedAt": {"$gte": "2026-01-01"}}]}'`
+- `--filter 'project = "PROJECT_KEY"'`
+- `--filter 'project = "PROJECT_KEY" and lastModifiedAt > "2026-01-01"'`
 
 
 ### Set up MCP:
