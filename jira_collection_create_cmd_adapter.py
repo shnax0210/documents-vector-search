@@ -14,7 +14,9 @@ ap = argparse.ArgumentParser()
 ap.add_argument("-collection", "--collection", required=True, help="Collection name (will be used as root folder name)")
 
 ap.add_argument("-url", "--url", required=True, help="Jira base url (Cloud: https://your-domain.atlassian.net, Server/Data Center: https://jira.example.com)")
-ap.add_argument("-jql", "--jql", required=True, help="Jira query (JQL) to get tickets for indexing")
+ap.add_argument("-jql", "--jql", required=False, default="",
+                
+                 help="Jira query (JQL) to get tickets for indexing")
 
 ap.add_argument("-indexers", "--indexers", required=False, default=["indexer_ChromaDb__embeddings_all-MiniLM-L6-v2"], help="list on indexer names", nargs='+')
 args = vars(ap.parse_args())
