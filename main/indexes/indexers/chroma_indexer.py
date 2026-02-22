@@ -1,13 +1,13 @@
-import json
 import chromadb
 import numpy as np
 import tempfile
 import shutil
 import os
 import pickle
-import re
 from typing import List, Tuple, Optional
 from datetime import datetime
+
+from main.indexes.filter_parser import parse_filter, FilterNode, FilterCondition, FilterGroup
 
 
 class ChromaIndexer:
@@ -64,10 +64,12 @@ class ChromaIndexer:
         if collection_size == 0:
             return np.array([[]]), np.array([[]])
         
+        filter_expression = parse_filter(filter)
+
         results = self.__collection.query(
             query_embeddings=[query_embedding.tolist()],
             n_results=min(number_of_results, collection_size),
-            where=self.__adjust_filter(filter)
+            where=self.__convert_filter_to_chroma(filter_expression)
         )
         
         if not results["ids"][0]:
@@ -106,37 +108,39 @@ class ChromaIndexer:
             time_value = time_value[:-1] + '+00:00'
         return int(datetime.fromisoformat(time_value).timestamp())
     
-    def __adjust_filter(self, filter):
-        if filter is None:
+    __DATE_FIELDS = {"createdAt", "lastModifiedAt"}
+
+    __OPERATOR_MAP = {
+        "!=": "$ne",
+        ">": "$gt",
+        ">=": "$gte",
+        "<": "$lt",
+        "<=": "$lte",
+    }
+
+    def __convert_filter_to_chroma(self, node: FilterNode):
+        if node is None:
             return None
 
-        adjusted_filter = filter
-        adjusted_filter = self.__adjust_time_field_in_filter(adjusted_filter, "createdAt")
-        adjusted_filter = self.__adjust_time_field_in_filter(adjusted_filter, "lastModifiedAt")
+        if isinstance(node, FilterCondition):
+            return self.__condition_to_chroma(node)
 
-        print(f"Adjusted filter: {adjusted_filter}")
-        
-        return json.loads(adjusted_filter)
-    
-    def __adjust_time_field_in_filter(self, filter: str, field_name: str) -> str:
-        field_pattern = rf'"{field_name}"\s*:\s*(\{{[^}}]*\}}|"[^"]*")'
-        iso_date_pattern = r'"(\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?)?)"'
-        
-        def replace_in_field(match):
-            field_content = match.group(0)
-            print(f"Adjusting {field_name} filter content: {field_content}")
-            
-            def replace_date(date_match):
-                date_str = date_match.group(1)
-                try:
-                    timestamp = self.__convert_iso_to_timestamp(date_str)
-                    return str(timestamp)
-                except (ValueError, AttributeError):
-                    raise ValueError(f"Invalid date format in {field_name} filter: '{date_str}'. Expected ISO format date.")
-            
-            return re.sub(iso_date_pattern, replace_date, field_content)
-        
-        return re.sub(field_pattern, replace_in_field, filter)
+        chroma_children = [self.__convert_filter_to_chroma(child) for child in node.children]
+
+        if len(chroma_children) == 1:
+            return chroma_children[0]
+
+        logical_key = "$and" if node.logical_operator == "and" else "$or"
+        return {logical_key: chroma_children}
+
+    def __condition_to_chroma(self, condition: FilterCondition):
+        value = condition.value
+        if condition.field in self.__DATE_FIELDS:
+            value = self.__convert_iso_to_timestamp(value)
+
+        if condition.operator == "=":
+            return {condition.field: value}
+        return {condition.field: {self.__OPERATOR_MAP[condition.operator]: value}}
 
     def __add_in_batches(self, ids: List[str], embeddings: List[List[float]], metadatas: List[dict], batch_size: int = 5000):
         total_items = len(ids)

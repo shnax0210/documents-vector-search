@@ -14,9 +14,9 @@ ap = argparse.ArgumentParser()
 ap.add_argument("-collection", "--collection", required=True, help="Collection name (will be used as root folder name)")
 
 ap.add_argument("-url", "--url", required=True, help="Confluence base url (e.g., https://your-domain.atlassian.net for Cloud or https://confluence.example.com for Server/Data Center)")
-ap.add_argument("-cql", "--cql", required=True, help="Confluence query (CQL) to get pages for indexing")
+ap.add_argument("-cql", "--cql", required=False, default="", help="Confluence query (CQL) to get pages for indexing")
 
-ap.add_argument("-indexers", "--indexers", required=False, default=["indexer_ChromaDb__embeddings_all-MiniLM-L6-v2"], help="List on indexer names", nargs='+')
+ap.add_argument("-indexers", "--indexers", required=False, default=["indexer_ChromaDb__embeddings_all-MiniLM-L6-v2", "indexer_SqlLiteBM25"], help="List on indexer names", nargs='+')
 
 ap.add_argument("-readOnlyFirstLevelComments", "--readOnlyFirstLevelComments", action="store_true", required=False, default=False, help="Confluence has hierarchical comments, first level comments are read by default, but for other ones additional call is needed what can slowdown the process. Pass this argument to read only first level comments and have better performance.")
 args = vars(ap.parse_args())

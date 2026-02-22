@@ -15,7 +15,7 @@ ap.add_argument("-basePath", "--basePath", required=True, help="Path to the root
 ap.add_argument("-includePatterns", "--includePatterns", required=False, default=[".*"], help="List of file patterns to include into collection", nargs='+')
 ap.add_argument("-excludePatterns", "--excludePatterns", required=False, default=[], help="List of file patterns to NOT include into collection", nargs='+')
 
-ap.add_argument("-indexers", "--indexers", required=False, default=["indexer_ChromaDb__embeddings_all-MiniLM-L6-v2"], help="List on indexer names", nargs='+')
+ap.add_argument("-indexers", "--indexers", required=False, default=["indexer_ChromaDb__embeddings_all-MiniLM-L6-v2", "indexer_SqlLiteBM25"], help="List on indexer names", nargs='+')
 
 ap.add_argument("-failFast", "--failFast", action="store_true", required=False, default=False, help="If passed - the process will stop on the first error. Otherwise, it will try to process all files and log errors for those that failed.")
 args = vars(ap.parse_args())

@@ -24,12 +24,14 @@ Key points:
 - Supports local files from a specified folder in various formats like: .pdf, .pptx, .docx, etc. Uses [Unstructured](https://github.com/Unstructured-IO/unstructured) for local files parsing;
 - Does NOT send any data to any third-party systems. All data are processed locally and stored locally (except in the case when you use it as MCP with a non-local AI agent).
 - Supports MCP protocol to use the vector search as a tool in AI agents.
+- Supports hybrid search (vector search togather with keyword one reranked by Reciprocal Rank Fusion).
 - Supports "update" operation, so there is no need to fully recreate the vector database each time.
 - Provides an abstraction to add more data sources and to use different technologies (embeddings, vector databases, etc.).
 
 Key technologies used:
 - "ChromaDB" lib (https://github.com/chroma-core/chroma) for vector search;
 - "FAISS" lib (https://github.com/facebookresearch/faiss) for vector search (alternative to ChromaDb);
+- "SqlLite" for BM25 (keyword) search;
 - "sentence-transformers" lib (https://pypi.org/project/sentence-transformers/) for embeddings;
 - "Unstructured" lib: https://github.com/Unstructured-IO/unstructured;
 - "LangChain" lib: https://python.langchain.com/docs/introduction/.
@@ -46,6 +48,11 @@ Communication:
 ### 2026/01/25 - Added ChromaDB and metafields filtering
 
 As from the beginning FAISS lib was used as a vector database. ChromaDB was added since it has abilities to filter search results by metafields, which can be pretty convenient for the tool. For example, Confluence search results can be filtered by space or modification time. As of now ChromaDb is used by default, but if you still want to use FAISS (it has a bit better performance), just pass `--indexes "indexer_FAISS_IndexFlatL2__embeddings_all-MiniLM-L6-v2"` during collection creation.
+
+### 2026/02/22 SqlLite BM25, Reciprocal Rank Fusion, common filtering syntax
+- Added ability to index data in SqlLite by using BM25 (usual keyword search);
+- Added ability to search by using several indexes at once. Then results are fused by using Reciprocal Rank Fusion.
+- Added common filtering syntax to be able to use it for both ChromaDb and SqlLite. Example: `--filter 'space = "SPACE_KEY" and lastModifiedAt > "2026-01-01"'`.
 
 ## Common use case
 1) You create a collection by a dedicated script (there are separate scripts for Jira, Confluence and local files cases). During the collection creation, data are loaded into your local machine and then indexed. Results are stored in a subfolder of `./data/collections` with the name that you specify via the "--collection ${collectionName}" parameter. So a collection is just a folder with all needed information for search, such as: loaded documents, index files, metadata, etc. Once a collection is created, it can be used for search and update. The creation process can take a while; it depends on the number of documents your collection consists of and local machine resources.
@@ -148,7 +155,16 @@ Notes:
 
 #### Filtering by metafields
 
-Filtering is available only for ChromaDB. Query syntax: https://cookbook.chromadb.dev/core/filters/
+Filtering is available for ChromaDB and SQLite BM25 indexers. The filter uses a common syntax:
+```
+field = "value"
+field operator "value"
+condition and condition
+condition or condition
+```
+
+Supported operators: `=`, `!=`, `>`, `>=`, `<`, `<=`.
+Multiple conditions can be joined with `and` or `or` (mixing `and` and `or` in one filter is not supported).
 
 ##### Confluence
 Available metafields:
@@ -158,8 +174,8 @@ Available metafields:
 - space: space key.
 
 Examples:
-- `--filter '{"space": "SPACE_KEY"}'`
-- `--filter '{"$and": [{"space": "SPACE_KEY"}, {"lastModifiedAt": {"$gte": "2026-01-01"}}]}'`
+- `--filter 'space = "SPACE_KEY"'`
+- `--filter 'space = "SPACE_KEY" and lastModifiedAt > "2026-01-01"'`
 
 ##### Jira
 Available metafields:
@@ -174,8 +190,8 @@ Available metafields:
 - status: status name (e.g., Open, In Progress, Done).
 
 Examples:
-- `--filter '{"project": "PROJECT_KEY"}'`
-- `--filter '{"$and": [{"project": "PROJECT_KEY"}, {"lastModifiedAt": {"$gte": "2026-01-01"}}]}'`
+- `--filter 'project = "PROJECT_KEY"'`
+- `--filter 'project = "PROJECT_KEY" and lastModifiedAt > "2026-01-01"'`
 
 
 ### Set up MCP:

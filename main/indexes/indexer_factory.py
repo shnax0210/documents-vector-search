@@ -1,6 +1,7 @@
 import json
 from .indexers.faiss_indexer import FaissIndexer
 from .indexers.chroma_indexer import ChromaIndexer
+from .indexers.sqllite_indexer import SqlliteIndexer
 from .embeddings.sentence_embeder import SentenceEmbedder
 
 def __get_available_indexes(collection_name, persister):
@@ -19,10 +20,11 @@ def __get_available_indexes(collection_name, persister):
 
 def __split_indexer_name(indexer_name):
     parts = indexer_name.split("__")
-    if len(parts) != 2:
-        raise ValueError(f"Invalid indexer name format: {indexer_name}")
-    indexer_type, embedding_model = parts
-    return indexer_type, embedding_model
+    if len(parts) == 1:
+        return parts[0], None
+    if len(parts) == 2:
+        return parts[0], parts[1]
+    raise ValueError(f"Invalid indexer name format: {indexer_name}")
 
 def __create_sentence_embedder(embedding_model):
     if embedding_model == "embeddings_all-MiniLM-L6-v2":
@@ -48,7 +50,18 @@ def create_indexer(indexer_name):
     if indexer_type == "indexer_ChromaDb":
         return ChromaIndexer(indexer_name, __create_sentence_embedder(embedding_model))
 
+    if indexer_type == "indexer_SqlLiteBM25":
+        return SqlliteIndexer(indexer_name)
+
     raise ValueError(f"Unknown indexer name: {indexer_name}")
+
+def load_indexers(index_names, collection_name, persister):
+    if index_names is None:
+        names = __get_available_indexes(collection_name, persister)
+    else:
+        names = index_names
+    return [load_indexer(name, collection_name, persister) for name in names]
+
 
 def load_indexer(indexer_name, collection_name, persister):
     if indexer_name is None:
@@ -71,5 +84,9 @@ def load_indexer(indexer_name, collection_name, persister):
     if indexer_type == "indexer_ChromaDb":
         serialized_data = persister.read_bin_file(f"{collection_name}/indexes/{indexer_name}/indexer")
         return ChromaIndexer(indexer_name, __create_sentence_embedder(embedding_model), serialized_data)
+
+    if indexer_type == "indexer_SqlLiteBM25":
+        serialized_data = persister.read_bin_file(f"{collection_name}/indexes/{indexer_name}/indexer")
+        return SqlliteIndexer(indexer_name, serialized_data)
 
     raise ValueError(f"Unknown indexer name: {indexer_name}")
