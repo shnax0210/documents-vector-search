@@ -24,9 +24,9 @@ Key points:
 - Supports local files from a specified folder in various formats like: .pdf, .pptx, .docx, etc. Uses [Unstructured](https://github.com/Unstructured-IO/unstructured) for local files parsing;
 - Does NOT send any data to any third-party systems. All data are processed locally and stored locally (except in the case when you use it as MCP with a non-local AI agent).
 - Supports MCP protocol to use the vector search as a tool in AI agents.
+- Supports hybrid search (vector search togather with keyword one reranked by Reciprocal Rank Fusion).
 - Supports "update" operation, so there is no need to fully recreate the vector database each time.
 - Provides an abstraction to add more data sources and to use different technologies (embeddings, vector databases, etc.).
-- Support of hybrid search (for example, vector search and BM25 reranked by Reciprocal Rank Fusion).
 
 Key technologies used:
 - "ChromaDB" lib (https://github.com/chroma-core/chroma) for vector search;
