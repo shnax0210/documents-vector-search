@@ -55,6 +55,14 @@ def create_indexer(indexer_name):
 
     raise ValueError(f"Unknown indexer name: {indexer_name}")
 
+def load_indexers(index_names, collection_name, persister):
+    if index_names is None:
+        names = __get_available_indexes(collection_name, persister)
+    else:
+        names = index_names
+    return [load_indexer(name, collection_name, persister) for name in names]
+
+
 def load_indexer(indexer_name, collection_name, persister):
     if indexer_name is None:
         available_indexes = __get_available_indexes(collection_name, persister)
