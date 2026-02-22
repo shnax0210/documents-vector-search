@@ -18,7 +18,7 @@ ap.add_argument("-jql", "--jql", required=False, default="",
                 
                  help="Jira query (JQL) to get tickets for indexing")
 
-ap.add_argument("-indexers", "--indexers", required=False, default=["indexer_ChromaDb__embeddings_all-MiniLM-L6-v2"], help="list on indexer names", nargs='+')
+ap.add_argument("-indexers", "--indexers", required=False, default=["indexer_ChromaDb__embeddings_all-MiniLM-L6-v2", "indexer_SqlLiteBM25"], help="list on indexer names", nargs='+')
 args = vars(ap.parse_args())
 
 # Detect if it's Jira Cloud or Server/Data Center based on URL

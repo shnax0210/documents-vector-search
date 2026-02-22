@@ -26,10 +26,12 @@ Key points:
 - Supports MCP protocol to use the vector search as a tool in AI agents.
 - Supports "update" operation, so there is no need to fully recreate the vector database each time.
 - Provides an abstraction to add more data sources and to use different technologies (embeddings, vector databases, etc.).
+- Support of hybrid search (for example, vector search and BM25 reranked by Reciprocal Rank Fusion).
 
 Key technologies used:
 - "ChromaDB" lib (https://github.com/chroma-core/chroma) for vector search;
 - "FAISS" lib (https://github.com/facebookresearch/faiss) for vector search (alternative to ChromaDb);
+- "SqlLite" for BM25 (keyword) search;
 - "sentence-transformers" lib (https://pypi.org/project/sentence-transformers/) for embeddings;
 - "Unstructured" lib: https://github.com/Unstructured-IO/unstructured;
 - "LangChain" lib: https://python.langchain.com/docs/introduction/.
@@ -47,7 +49,10 @@ Communication:
 
 As from the beginning FAISS lib was used as a vector database. ChromaDB was added since it has abilities to filter search results by metafields, which can be pretty convenient for the tool. For example, Confluence search results can be filtered by space or modification time. As of now ChromaDb is used by default, but if you still want to use FAISS (it has a bit better performance), just pass `--indexes "indexer_FAISS_IndexFlatL2__embeddings_all-MiniLM-L6-v2"` during collection creation.
 
-Filtering uses a common syntax that works across all indexers that support metadata (ChromaDB and SQLite BM25). Example: `--filter 'space = "SPACE_KEY" and lastModifiedAt > "2026-01-01"'`.
+### 2026/02/22 SqlLite BM25, Reciprocal Rank Fusion, common filtering syntax
+- Added ability to index data in SqlLite by using BM25 (usual keyword search);
+- Added ability to search by using several indexes at once. Then results are fused by using Reciprocal Rank Fusion.
+- Added common filtering syntax to be able to use it for both ChromaDb and SqlLite. Example: `--filter 'space = "SPACE_KEY" and lastModifiedAt > "2026-01-01"'`.
 
 ## Common use case
 1) You create a collection by a dedicated script (there are separate scripts for Jira, Confluence and local files cases). During the collection creation, data are loaded into your local machine and then indexed. Results are stored in a subfolder of `./data/collections` with the name that you specify via the "--collection ${collectionName}" parameter. So a collection is just a folder with all needed information for search, such as: loaded documents, index files, metadata, etc. Once a collection is created, it can be used for search and update. The creation process can take a while; it depends on the number of documents your collection consists of and local machine resources.
