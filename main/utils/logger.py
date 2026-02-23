@@ -1,17 +1,16 @@
 import logging
 import sys
 
-def setup_root_logger(level: int = logging.INFO) -> logging.Logger:
+def setup_root_logger(level: int = logging.INFO, use_stderr: bool = False) -> logging.Logger:
     root_logger = logging.getLogger()
     
-    # Avoid adding multiple handlers if already configured
     if root_logger.handlers:
         return root_logger
     
     root_logger.setLevel(level)
     
-    # Create console handler for root logger
-    console_handler = logging.StreamHandler(sys.stdout)
+    stream = sys.stderr if use_stderr else sys.stdout
+    console_handler = logging.StreamHandler(stream)
     console_handler.setLevel(level)
     
     # Create formatter for root logger
