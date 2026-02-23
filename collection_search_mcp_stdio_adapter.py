@@ -7,7 +7,8 @@ from mcp.server.fastmcp import FastMCP
 from main.factories.search_collection_factory import create_collection_searcher
 from main.utils.logger import setup_root_logger
 
-setup_root_logger()
+# Write to stderr for MCP, since in other case logs will be mixed with stdout and break communication between MCP and the tool adapter
+setup_root_logger(use_stderr=True)
 
 mcp = FastMCP("documents-search")
 
