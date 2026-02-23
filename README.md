@@ -1,253 +1,237 @@
-# Project allows document indexing in a local vector database and then search (supports Jira, Confluence and local files, can be integrated via MCP)
+# Local Vector Search for Jira, Confluence & Files (with MCP support)
 
-- [Base info](#base-info)
+- [Overview](#overview)
 - [Updates](#updates)
-  - [2026/01/25 - Added ChromaDB and metafields filtering](#20260125---added-chromadb-and-metafields-filtering)
-- [Common use case](#common-use-case)
-- [How to set up and use](#how-to-set-up-and-use)
+- [How it works](#how-it-works)
+- [Setup](#setup)
   - [Create collection for Confluence](#create-collection-for-confluence)
   - [Create collection for Jira](#create-collection-for-jira)
   - [Create collection for local files](#create-collection-for-local-files)
-  - [Update existing collection](#update-existing-collection)
-  - [Search in collection](#search-in-collection)
+  - [Update collection](#update-collection)
+  - [Search](#search)
     - [Filtering by metafields](#filtering-by-metafields)
-      - [Confluence](#confluence)
-      - [Jira](#jira)
   - [Set up MCP](#set-up-mcp)
 - [Collection structure](#collection-structure)
-- [Other useful info](#other-useful-info)
+- [Good to know](#good-to-know)
 
-## Base info
+## Overview
 
-Key points:
-- Supports Jira/Confluence Data Center/Server and Cloud. For Jira ticket is a document, for Confluence page is a document.
-- Supports local files from a specified folder in various formats like: .pdf, .pptx, .docx, etc. Uses [Unstructured](https://github.com/Unstructured-IO/unstructured) for local files parsing;
-- Does NOT send any data to any third-party systems. All data are processed locally and stored locally (except in the case when you use it as MCP with a non-local AI agent).
-- Supports MCP protocol to use the vector search as a tool in AI agents.
-- Supports hybrid search (vector search togather with keyword one reranked by Reciprocal Rank Fusion).
-- Supports "update" operation, so there is no need to fully recreate the vector database each time.
-- Provides an abstraction to add more data sources and to use different technologies (embeddings, vector databases, etc.).
+Index documents from Jira, Confluence, or local files into a local vector database and search them. All data stays on your machine.
 
-Key technologies used:
-- "ChromaDB" lib (https://github.com/chroma-core/chroma) for vector search;
-- "FAISS" lib (https://github.com/facebookresearch/faiss) for vector search (alternative to ChromaDb);
-- "SqlLite" for BM25 (keyword) search;
-- "sentence-transformers" lib (https://pypi.org/project/sentence-transformers/) for embeddings;
-- "Unstructured" lib: https://github.com/Unstructured-IO/unstructured;
-- "LangChain" lib: https://python.langchain.com/docs/introduction/.
+**Key features:**
+- Jira & Confluence (Server/Data Center and Cloud). Jira ticket = document, Confluence page = document
+- Local files (.pdf, .pptx, .docx, etc.) via [Unstructured](https://github.com/Unstructured-IO/unstructured)
+- **No data sent to third parties** (except when used as MCP with a remote AI agent)
+- Hybrid search: vector search + BM25 keyword search, merged by Reciprocal Rank Fusion
+- Incremental updates: no need to rebuild the full index each time
+- Filter results by metafields (space, project, date, etc.)
 
-Please check this article for more context: https://medium.com/@shnax0210/mcp-tool-for-vector-search-in-confluence-and-jira-6beeade658ba
+**Technologies:** [ChromaDB](https://github.com/chroma-core/chroma), [FAISS](https://github.com/facebookresearch/faiss), SQLite (BM25), [sentence-transformers](https://pypi.org/project/sentence-transformers/), [Unstructured](https://github.com/Unstructured-IO/unstructured), [LangChain](https://python.langchain.com/docs/introduction/)
 
-Communication:
-- if you like the app, please add a star for the repo (it encourages me much for the future work);
-- if you see some issues or improvements, please log them here: https://github.com/shnax0210/documents-vector-search/issues
-- if you want to chat me, please find me on [LinkedIn](https://www.linkedin.com/in/oleksii-shnepov-841447158/)
+More context: [Medium article](https://medium.com/@shnax0210/mcp-tool-for-vector-search-in-confluence-and-jira-6beeade658ba)
+
+**Contacts:**
+- Like it? Please star the repo
+- Found a bug? [Open an issue](https://github.com/shnax0210/documents-vector-search/issues)
+- Want to chat? [LinkedIn](https://www.linkedin.com/in/oleksii-shnepov-841447158/)
 
 ## Updates
 
-### 2026/01/25 - Added ChromaDB and metafields filtering
+### 2026/02/22 — SQLite BM25, Reciprocal Rank Fusion, common filter syntax
+- BM25 keyword search via SQLite
+- Multi-index search with Reciprocal Rank Fusion
+- Common filter syntax for ChromaDB and SQLite: `--filter 'space = "SPACE_KEY" and lastModifiedAt > "2026-01-01"'`
 
-As from the beginning FAISS lib was used as a vector database. ChromaDB was added since it has abilities to filter search results by metafields, which can be pretty convenient for the tool. For example, Confluence search results can be filtered by space or modification time. As of now ChromaDb is used by default, but if you still want to use FAISS (it has a bit better performance), just pass `--indexes "indexer_FAISS_IndexFlatL2__embeddings_all-MiniLM-L6-v2"` during collection creation.
+### 2026/01/25 — ChromaDB and metafields filtering
 
-### 2026/02/22 SqlLite BM25, Reciprocal Rank Fusion, common filtering syntax
-- Added ability to index data in SqlLite by using BM25 (usual keyword search);
-- Added ability to search by using several indexes at once. Then results are fused by using Reciprocal Rank Fusion.
-- Added common filtering syntax to be able to use it for both ChromaDb and SqlLite. Example: `--filter 'space = "SPACE_KEY" and lastModifiedAt > "2026-01-01"'`.
+ChromaDB added as default vector database (replaces FAISS) with metafield filtering support. To use FAISS instead, pass `--indexes "indexer_FAISS_IndexFlatL2__embeddings_all-MiniLM-L6-v2"` during collection creation.
 
-## Common use case
-1) You create a collection by a dedicated script (there are separate scripts for Jira, Confluence and local files cases). During the collection creation, data are loaded into your local machine and then indexed. Results are stored in a subfolder of `./data/collections` with the name that you specify via the "--collection ${collectionName}" parameter. So a collection is just a folder with all needed information for search, such as: loaded documents, index files, metadata, etc. Once a collection is created, it can be used for search and update. The creation process can take a while; it depends on the number of documents your collection consists of and local machine resources.
-2) After some time, you may want to update existing collections to get new data, you can do it via a dedicated script. You will need to specify the collection name used during collection creation. Collection update reads and indexes only new/updated documents, so it should be much faster than collection creation.
-3) You can search in an existing collection by dedicated script.
-4) You can set up MCP tool for existing collection, so an AI agent will be able to use the search.
+## How it works
 
-## How to set up and use
-
-1) Clone the repository
-2) Install `uv`: https://docs.astral.sh/uv/
-3) Navigate to the root project folder and run: `uv sync`
-
-### Create collection for Confluence:
-
-1) Set env variables needed for authentification/authorization:
-- **For Confluence Server/Data Center:** set CONF_TOKEN env variable with your Confluence Bearer token (optionally, you can set CONF_LOGIN and CONF_PASSWORD env variables instead with your Confluence user login and password, but the token variant is more recommended).
-- **For Confluence Cloud:** set ATLASSIAN_EMAIL env variable with your Atlassian account email and ATLASSIAN_TOKEN env variable with your Atlassian Cloud API token. (Generate API token at: https://id.atlassian.com/manage/api-tokens)
-
-2) Run command like:
-```
-uv run confluence_collection_create_cmd_adapter.py --collection "confluence" --url "${baseConfluenceUrl}" --cql "${confluenceQuery}"
+```mermaid
+flowchart TD
+    A[1. Create collection] -->|loads & indexes documents| B["Collection stored in ./data/collections/${name}"]
+    B --> C{What next?}
+    C --> D[2. Update collection]
+    C --> E[3. Search via CLI]
+    C --> F[4. Search via MCP]
+    D -->|indexes only new/changed docs| B
+    E -->|search| B
+    F -->|search| B
 ```
 
-Notes:
-- The script automatically detects whether your Confluence instance is Cloud or Server/Data Center based on the URL:
-  - URLs ending with `.atlassian.net` are treated as Confluence Cloud
-  - All other URLs are treated as Confluence Server/Data Center
-- You can use different values for the "collection" parameter, but you will need to use the same value during collection updates and searches. It defines the collection name, and all collection data will be stored in a folder with that name under `./data/collections`;
-- Please update ${baseConfluenceUrl} to the real Confluence base URL:
-  - For Server/Data Center, example: https://confluence.example.com
-  - For Cloud, example: https://your-domain.atlassian.net
-- Please update ${confluenceQuery} to the real Confluence query, for example: "(space = 'MySpaceName') AND (created >= '2025-01-01' OR lastModified >= '2025-01-01')"
+1. **Create** a collection — load and index documents from Jira, Confluence, or local files. Stored in `./data/collections/{name}`
+2. **Update** — re-index only new or changed documents (much faster than full creation)
+3. **Search** — find documents by text query via CLI
+4. **MCP** — expose search as a tool for AI agents
 
-### Create collection for Jira:
+## Setup
 
-1) Set env variables needed for authentification/authorization:
-- **For Jira Server/Data Center:** set JIRA_TOKEN env variable with your Jira Bearer token (optionally, you can set JIRA_LOGIN and JIRA_PASSWORD env variables instead with your Jira user login and password, but the token variant is more recommended).
-- **For Jira Cloud:** set ATLASSIAN_EMAIL env variable with your Atlassian account email and ATLASSIAN_TOKEN env variable with your Atlassian Cloud API token. (Generate API token at: https://id.atlassian.com/manage/api-tokens)
+1. Clone the repository
+2. Install [uv](https://docs.astral.sh/uv/)
+3. Run `uv sync` in the project root
 
-2) Run command like:
+### Authentication
+
+Set environment variables before creating or updating Jira/Confluence collections (not needed for local files):
+
+| Platform | Type | Environment Variables |
+|---|---|---|
+| Confluence Server/DC | Bearer token (recommended) | `CONF_TOKEN` |
+| Confluence Server/DC | Login/Password | `CONF_LOGIN`, `CONF_PASSWORD` |
+| Confluence Cloud | Email/API token | `ATLASSIAN_EMAIL`, `ATLASSIAN_TOKEN` ([get token](https://id.atlassian.com/manage/api-tokens)) |
+| Jira Server/DC | Bearer token (recommended) | `JIRA_TOKEN` |
+| Jira Server/DC | Login/Password | `JIRA_LOGIN`, `JIRA_PASSWORD` |
+| Jira Cloud | Email/API token | `ATLASSIAN_EMAIL`, `ATLASSIAN_TOKEN` ([get token](https://id.atlassian.com/manage/api-tokens)) |
+
+Cloud vs Server is auto-detected: URLs ending with `.atlassian.net` are treated as Cloud.
+
+### Create collection for Confluence
+
+```bash
+uv run confluence_collection_create_cmd_adapter.py \
+  --collection "confluence" \
+  --url "${baseConfluenceUrl}" \
+  --cql "${confluenceQuery}"
 ```
-uv run jira_collection_create_cmd_adapter.py --collection "jira" --url "${baseJiraUrl}" --jql "${jiraQuery}"
+
+- `--collection` — name of the collection (used later for update/search). Data stored in `./data/collections/{name}`
+- `--url` — Confluence base URL (e.g., `https://confluence.example.com` or `https://your-domain.atlassian.net`)
+- `--cql` — Confluence query, e.g., `"(space = 'MySpace') AND (lastModified >= '2025-01-01')"`
+
+### Create collection for Jira
+
+```bash
+uv run jira_collection_create_cmd_adapter.py \
+  --collection "jira" \
+  --url "${baseJiraUrl}" \
+  --jql "${jiraQuery}"
 ```
 
-Notes:
-- The script automatically detects whether your Jira instance is Cloud or Server/Data Center based on the URL:
-  - URLs ending with `.atlassian.net` are treated as Jira Cloud
-  - All other URLs are treated as Jira Server/Data Center
-- You can use different values for the "collection" parameter, but you will need to use the same value during collection updates and searches. It defines the collection name, and all collection data will be stored in a folder with that name under `./data/collections`;
-- Please update ${baseJiraUrl} to the real Jira base URL:
-  - For Server/Data Center, example: https://jira.example.com
-  - For Cloud, example: https://your-domain.atlassian.net
-- Please update ${jiraQuery} to the real Jira query, for example: "project = MyProjectName AND created >= -183d"
+- `--url` — Jira base URL (e.g., `https://jira.example.com` or `https://your-domain.atlassian.net`)
+- `--jql` — Jira query, e.g., `"project = MyProject AND created >= -183d"`
 
 ### Create collection for local files
 
-1) Run a command like:
+```bash
+uv run files_collection_create_cmd_adapter.py --basePath "${pathToFolder}"
 ```
-uv run files_collection_create_cmd_adapter.py --basePath "${pathToFolderWithFiles}"
-```
 
-Notes:
-- Please update `${pathToFolderWithFiles}` to the actual folder path.
-- By default, the collection will be named after the last folder in `--basePath` (for example, if `--basePath` is "/Users/a/b", the collection name will be "b"). You can override this by adding `--collection ${collectionName}`, as in all other scripts.
-- By default, if a file cannot be read, it is just skipped and written to the log. You can override this by adding the `--failFast` parameter, so the script will fail immediately after the first error.
-- By default, all files from `${pathToFolderWithFiles}` are included (except for some predefined types, like zip, jar, etc.). You can adjust this by adding `--includePatterns` and `--excludePatterns` parameters with regexes. If you specify both `--includePatterns` and `--excludePatterns`, only files that match `--includePatterns` and do not match `--excludePatterns` will be included. Examples:
-    - Example of `--includePatterns` (the parameter can be used multiple times): `--includePatterns "subfolder1/.*" "subfolder2/.*"`.
-    - Example of `--excludePatterns` (the parameter can be used multiple times): `--excludePatterns "subfolder1/.*" "subfolder2/.*"`.
-- The script uses the [Unstructured](https://github.com/Unstructured-IO/unstructured) Python library, which supports many [file formats](https://docs.unstructured.io/welcome#supported-file-types) such as .pdf, .pptx, .docx, etc. Some file formats may require additional software installation, listed [here](https://docs.unstructured.io/open-source/installation/full-installation#full-installation).
+- Collection name defaults to the last folder name. Override with `--collection {name}`
+- Unreadable files are skipped by default. Use `--failFast` to stop on first error
+- Filter files with `--includePatterns "regex1" "regex2"` and `--excludePatterns "regex1" "regex2"`
+- Uses [Unstructured](https://github.com/Unstructured-IO/unstructured) for parsing. Some formats may need [extra software](https://docs.unstructured.io/open-source/installation/full-installation#full-installation)
 
-### Update existing collection:
+### Update collection
 
-1) Set env variables needed for authentification/authorization (not needed for local files):
-- **For Confluence Server/Data Center:** set CONF_TOKEN env variable with your Confluence Bearer token (optionally, you can set CONF_LOGIN and CONF_PASSWORD env variables instead with your Confluence user login and password, but the token variant is more recommended).
-- **For Confluence Cloud:** set ATLASSIAN_EMAIL env variable with your Atlassian account email and ATLASSIAN_TOKEN env variable with your Atlassian Cloud API token. (Generate API token at: https://id.atlassian.com/manage/api-tokens)
-- **For Jira Server/Data Center:** set JIRA_TOKEN env variable with your Jira Bearer token (optionally, you can set JIRA_LOGIN and JIRA_PASSWORD env variables instead with your Jira user login and password, but the token variant is more recommended).
-- **For Jira Cloud:** set ATLASSIAN_EMAIL env variable with your Atlassian account email and ATLASSIAN_TOKEN env variable with your Atlassian Cloud API token. (Generate API token at: https://id.atlassian.com/manage/api-tokens)
+Only re-indexes new or changed documents.
 
-2) Run command like:
-```
+```bash
 uv run collection_update_cmd_adapter.py --collection "${collectionName}"
 ```
 
-Notes:
-- Please update ${collectionName} to the real collection name (the one used during collection creation), for example: "confluence" or "jira".
+### Search
 
-### Search in collection:
-
-Run command like:
-```
-uv run collection_search_cmd_adapter.py --collection "${collectionName}" --query "${searchQuery}"
+```bash
+uv run collection_search_cmd_adapter.py \
+  --collection "${collectionName}" \
+  --query "How to set up react project locally"
 ```
 
-Notes:
-- Please update ${collectionName} to the real collection name (the one used during collection creation), for example: "confluence" or "jira";
-- Please update ${searchQuery} to the text that you would like to search, for example: "How to set up react project locally";
-- You can add the "--includeMatchedChunksText" parameter to include matched chunks of a document text in search results.
-- You can use "--filter" parameter to add filtering by metafields.
+- `--includeMatchedChunksText` — include matched text chunks in results
+- `--filter` — filter by metafields (see below)
 
 #### Filtering by metafields
 
-Filtering is available for ChromaDB and SQLite BM25 indexers. The filter uses a common syntax:
+Works with ChromaDB and SQLite BM25 indexes.
+
+**Syntax:**
 ```
-field = "value"
-field operator "value"
-condition and condition
-condition or condition
+field operator "value" and/or field operator "value"
 ```
 
-Supported operators: `=`, `!=`, `>`, `>=`, `<`, `<=`.
-Multiple conditions can be joined with `and` or `or` (mixing `and` and `or` in one filter is not supported).
+Operators: `=`, `!=`, `>`, `>=`, `<`, `<=`. Use `and` / `or` to join conditions (mixing both is not supported).
 
-##### Confluence
-Available metafields:
-- createdAt: date when page was created.
-- createdBy: lowercased user email who created a page;
-- lastModifiedAt: last date when page was updated;
-- space: space key.
+**Confluence metafields:**
 
-Examples:
-- `--filter 'space = "SPACE_KEY"'`
-- `--filter 'space = "SPACE_KEY" and lastModifiedAt > "2026-01-01"'`
+| Field | Description |
+|---|---|
+| `space` | Space key |
+| `createdAt` | Page creation date |
+| `createdBy` | Creator email (lowercase) |
+| `lastModifiedAt` | Last update date |
 
-##### Jira
-Available metafields:
-- createdAt: date when issue was created;
-- createdBy: lowercased user email who created an issue;
-- lastModifiedAt: last date when issue was updated;
-- project: project key (extracted from issue key);
-- type: issue type name (e.g., Bug, Task, Story);
-- epic: epic key or parent issue key;
-- priority: priority name (e.g., High, Medium, Low);
-- assignee: lowercased assignee email;
-- status: status name (e.g., Open, In Progress, Done).
-
-Examples:
-- `--filter 'project = "PROJECT_KEY"'`
-- `--filter 'project = "PROJECT_KEY" and lastModifiedAt > "2026-01-01"'`
-
-
-### Set up MCP:
-
-Add MCP configuration like:
+**Examples:**
+```bash
+--filter 'space = "SPACE_KEY"'
+--filter 'space = "SPACE_KEY" and lastModifiedAt > "2026-01-01"'
+--filter '(space = "SPACE_KEY1" or space = "SPACE_KEY2") and lastModifiedAt > "2026-01-01"'
 ```
+
+**Jira metafields:**
+
+| Field | Description |
+|---|---|
+| `project` | Project key |
+| `type` | Issue type (Bug, Task, Story, ...) |
+| `status` | Status (Open, In Progress, Done, ...) |
+| `priority` | Priority (High, Medium, Low, ...) |
+| `epic` | Epic or parent issue key |
+| `assignee` | Assignee email (lowercase) |
+| `createdAt` | Issue creation date |
+| `createdBy` | Creator email (lowercase) |
+| `lastModifiedAt` | Last update date |
+
+**Examples:**
+```bash
+--filter 'project = "PROJ"'
+--filter 'project = "PROJ" and lastModifiedAt > "2026-01-01"'
+--filter '(project = "PROJ1" or project = "PROJ2") and lastModifiedAt > "2026-01-01"'
+```
+
+### Set up MCP
+
+Add to your MCP config (e.g., `.vscode/mcp.json` for VS Code + GitHub Copilot):
+
+```json
 {
     "servers": {
-        ...
-        "search_${collectionName}_stdio": {
+        "search_${collectionName}": {
             "type": "stdio",
             "command": "uv",
             "args": [
-                "--directory",
-                "${fullPathToRootProjectFolder}",
-                "run",
-                "collection_search_mcp_stdio_adapter.py",
-                "--collection",
-                "${collectionName}",
+                "--directory", "${fullPathToRootProjectFolder}",
+                "run", "collection_search_mcp_stdio_adapter.py",
+                "--collection", "${collectionName}"
             ]
-        },
-        ...
+        }
     }
 }
 ```
 
-If you use VS code IDE and GitHub Copilot, you can add the configuration into `.vscode/mcp.json` file in the root of your project.
-You can check more details on youtube:
-- https://www.youtube.com/watch?v=VePxCcF99w4
-- https://www.youtube.com/watch?v=iS25RFups4A
+- Replace `${collectionName}` and `${fullPathToRootProjectFolder}` with real values
+- Use `--maxNumberOfChunks {number}` to control how many text chunks are returned (more = better search, but may exceed model context window)
+- Use `--filter` for metafield filtering ([details](#filtering-by-metafields))
 
-Notes:
-- Please update ${collectionName} to the real collection name (the one used during collection creation), for example: "confluence" or "jira".
-- Please update ${fullPathToRootProjectFolder} to the real full path to this project root folder.
-- It can be useful to increase the number of returned matched text chunks by setting "--maxNumberOfChunks ${number}". A bigger number means better search, but too large a number may break GitHub Copilot, probably because it does not fit into the model context window.
-- You can use "--filter" parameter to add filtering by metafields (check [Filtering by metafields](#filtering-by-metafields) for more details).
-
-Prompt examples:
-- "Find information about AI use cases, search info on Confluence, include all used links in response"
-- "Find information about PDP carousel, search info on Jira, include all used links in response"
-
+**Prompt examples:**
+- "Find info about AI use cases, search on Confluence, include all used links"
+- "Find info about PDP carousel, search on Jira, include all used links"
 
 ## Collection structure
-Collection is a subfolder of the `./data/collections` folder.
-A collection folder contains all files needed for performing vector search in the collection.
 
-A collection folder consists of:
-- `documents` folder contains documents read by `reader` from the `./main/sources` package and converted by `converter` from the `./main/sources` package.
-- `indexes` folder contains available indexes (usually just one index but multiple are also supported);
-- `manifest.json` file contains information about the index such as name, last update time, reader details, and indexes.
+```mermaid
+graph TD
+    A["./data/collections/${name}/"] --> B["documents/"]
+    A --> C["indexes/"]
+    A --> D["manifest.json"]
+    B --- B1["Loaded and converted documents"]
+    C --- C1["Vector and keyword index files"]
+    D --- D1["Collection metadata: name, last update time, reader config, index list"]
+```
 
-Please check the `./main/core/documents_collection_creator.py` code to find most of the details about collection creation or updating.
+See `./main/core/documents_collection_creator.py` for creation/update details and `./main/core/documents_collection_searcher.py` for search details.
 
-Please check the `./main/core/documents_collection_searcher.py` code to find most of the details about searching in a collection.
+## Good to know
 
-## Other useful info
-- Collection update reads only new information, so it should be much faster than collection creation. Collection update uses information from the collection manifest file located in `./data/collections/${collectionName}/manifest.json`.
-- Collection update usually reads a bit more documents than were really updated since last time. Currently, the logic is as follows: it reads all documents that were created/updated since the "lastModifiedDocumentTime" field value from the `./data/collections/${collectionName}/manifest.json` file minus 1 day. It's done so to guarantee that no document update will be lost due to parallel document creations (probably 1 day can be updated to some much less value like a couple of seconds, but it does not look like a big deal to me and I prefer just to be more sure that everything is updated). The "lastModifiedDocumentTime" field contains the value of the latest update time for all documents in the collection.
-- There is a cache mechanism for Jira/Confluence collection creation, so if you create a collection multiple times with the same parameters: url, query (JQL or CQL), etc. - documents will be read from the cache located in the `./data/caches` subfolder (all important parameters are collected together and hashed, the hash is used as the folder name (`./data/caches/{hash}`) for cached documents, there is also a `./data/caches/{hash}_completed` file that indicates if all documents were successfully read, the cache is used only in case if the `./data/caches/{hash}_completed` file is present as well as the `./data/caches/{hash}` folder). The cache is useful during testing, but can lead to a situation where new data are not read. In such a case, you can either run the "update" script after collection creation, or remove the cache manually before collection creation.
+- **Incremental updates** — only new/changed documents are re-indexed. Uses `lastModifiedDocumentTime` from `manifest.json` (minus 1 day buffer to avoid missing concurrent updates)
+- **Caching** — Jira/Confluence collection creation caches downloaded documents in `./data/caches/{hash}`. Same parameters = same cache. If you need fresh data, either run an update after creation, or delete the cache folder manually
