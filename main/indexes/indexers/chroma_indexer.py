@@ -1,4 +1,5 @@
 import chromadb
+from chromadb.config import Settings
 import numpy as np
 import tempfile
 import shutil
@@ -16,7 +17,10 @@ class ChromaIndexer:
         self.embedder = embedder
         
         self.__temp_dir = tempfile.mkdtemp()
-        self.__client = chromadb.PersistentClient(path=self.__temp_dir)
+        self.__client = chromadb.PersistentClient(
+            path=self.__temp_dir,
+            settings=Settings(anonymized_telemetry=False),
+        )
 
         self.__collection = self.__client.get_or_create_collection(
             name="documents",

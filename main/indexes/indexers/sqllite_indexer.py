@@ -16,7 +16,7 @@ class SqlliteIndexer:
             self.__ensure_metadata_table()
         else:
             self.__conn.execute(
-                "CREATE VIRTUAL TABLE documents USING fts5(doc_id, content)"
+                "CREATE VIRTUAL TABLE documents USING fts5(doc_id UNINDEXED, content)"
             )
             self.__conn.execute(
                 "CREATE TABLE metadata (doc_id TEXT PRIMARY KEY, data JSON)"
@@ -124,5 +124,5 @@ class SqlliteIndexer:
         words = text.split()
         if not words:
             return '""'
-        escaped_words = ['"' + word.replace('"', '""') + '"' for word in words]
-        return " OR ".join(escaped_words)
+        escaped_words = ['content : "' + word.replace('"', '""') + '"' for word in words]
+        return " AND ".join(escaped_words)

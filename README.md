@@ -209,6 +209,8 @@ Add to your MCP config (e.g., `.vscode/mcp.json` for VS Code + GitHub Copilot):
 }
 ```
 
+The MCP may start slowly in case of big amount of data and even can fail sometimes (simple restart fixes that in 100% cases for me)!
+
 - Replace `${collectionName}` and `${fullPathToRootProjectFolder}` with real values
 - Use `--maxNumberOfChunks {number}` to control how many text chunks are returned (more = better search, but may exceed model context window)
 - Use `--filter` for metafield filtering ([details](#filtering-by-metafields))
