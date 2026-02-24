@@ -1,11 +1,11 @@
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-
 class JiraDocumentConverter:
-    def __init__(self):
-        self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1000,
-            chunk_overlap=100,
-        )
+    def __init__(self, text_splitter):
+        self.__text_splitter = text_splitter
+
+    def get_details(self):
+        return {
+            "splitter": self.__text_splitter.get_details(),
+        }
 
     def convert(self, document):
         return [{
@@ -39,7 +39,7 @@ class JiraDocumentConverter:
         
         description_and_comments = self.__fetch_description_and_comments(document)
         if description_and_comments:
-            for chunk in self.text_splitter.split_text(description_and_comments):
+            for chunk in self.__text_splitter.split_text(description_and_comments):
                 chunks.append({
                     "indexedData": chunk
                 })

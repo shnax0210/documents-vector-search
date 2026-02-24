@@ -7,6 +7,7 @@ from main.sources.jira.jira_document_converter import JiraDocumentConverter
 from main.sources.jira.jira_cloud_document_reader import JiraCloudDocumentReader
 from main.sources.jira.jira_cloud_document_converter import JiraCloudDocumentConverter
 from main.factories.create_collection_factory import create_collection_creator
+from main.splitter.text_splitter import TextSplitter
 
 setup_root_logger()
 
@@ -19,7 +20,11 @@ ap.add_argument("-jql", "--jql", required=False, default="",
                  help="Jira query (JQL) to get tickets for indexing")
 
 ap.add_argument("-indexers", "--indexers", required=False, default=["indexer_ChromaDb__embeddings_all-MiniLM-L6-v2", "indexer_SqlLiteBM25"], help="list on indexer names", nargs='+')
+ap.add_argument("-chunkSize", "--chunkSize", required=False, default=1000, type=int, help="Chunk size for text splitting (default: 1000)")
+ap.add_argument("-chunkOverlap", "--chunkOverlap", required=False, default=100, type=int, help="Chunk overlap for text splitting (default: 100)")
 args = vars(ap.parse_args())
+
+text_splitter = TextSplitter(chunk_size=args['chunkSize'], chunk_overlap=args['chunkOverlap'])
 
 # Detect if it's Jira Cloud or Server/Data Center based on URL
 is_cloud = args['url'].endswith('.atlassian.net')
@@ -37,7 +42,7 @@ if is_cloud:
                                                    email=email,
                                                    api_token=api_token)
     
-    jira_document_converter = JiraCloudDocumentConverter()
+    jira_document_converter = JiraCloudDocumentConverter(text_splitter)
     
 else:
     # Jira Server/Data Center authentication
@@ -54,7 +59,7 @@ else:
                                               login=login, 
                                               password=password)
     
-    jira_document_converter = JiraDocumentConverter()
+    jira_document_converter = JiraDocumentConverter(text_splitter)
 
 jira_collection_creator = create_collection_creator(collection_name=args['collection'],
                                                      indexers=args['indexers'],
