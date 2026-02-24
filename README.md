@@ -237,5 +237,6 @@ See `./main/core/documents_collection_creator.py` for creation/update details an
 
 ## Good to know
 
-- **Incremental updates** — only new/changed documents are re-indexed. Uses `lastModifiedDocumentTime` from `manifest.json` (minus 1 day buffer to avoid missing concurrent updates)
-- **Caching** — Jira/Confluence collection creation caches downloaded documents in `./data/caches/{hash}`. Same parameters = same cache. If you need fresh data, either run an update after creation, or delete the cache folder manually
+- **Incremental updates** — only new/changed documents are re-indexed. Uses `lastModifiedDocumentTime` from `manifest.json` (minus 1 day buffer to avoid missing concurrent updates and possible issues with different time zones);
+- **Caching** — Jira/Confluence collection creation caches downloaded documents in `./data/caches/{hash}`. Same parameters = same cache. If you need fresh data, either run an update after creation, or delete the cache folder manually;
+- there are more parameters in scripts, use "--help" to get more.
