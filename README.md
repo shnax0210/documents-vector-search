@@ -37,6 +37,10 @@ More context: [Medium article](https://medium.com/@shnax0210/mcp-tool-for-vector
 
 ## Updates
 
+### 2026/02/24 — Faster Chroma deserialization (interface preserved)
+- New Chroma index payload format stores/restores the underlying Chroma storage directly, avoiding full Python-level embeddings replay during load and end up with significant performance gain (about x2);
+- Existing collections remain supported (backward-compatible load path for previous payload format).
+
 ### 2026/02/22 — SQLite BM25, Reciprocal Rank Fusion, common filter syntax
 - BM25 keyword search via SQLite
 - Multi-index search with Reciprocal Rank Fusion

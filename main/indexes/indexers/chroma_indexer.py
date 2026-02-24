@@ -5,6 +5,8 @@ import tempfile
 import shutil
 import os
 import pickle
+import io
+import tarfile
 from typing import List, Tuple, Optional
 from datetime import datetime
 
@@ -12,11 +14,18 @@ from main.indexes.filter_parser import parse_filter, FilterNode, FilterCondition
 
 
 class ChromaIndexer:
+    __SERIALIZED_ARCHIVE_MAGIC = b"CHROMA_ARCHIVE_V1\0"
+
     def __init__(self, name: str, embedder, serialized_data: Optional[bytes] = None):
         self.name = name
         self.embedder = embedder
         
         self.__temp_dir = tempfile.mkdtemp()
+
+        serialized_as_archive = serialized_data is not None and self.__is_storage_archive(serialized_data)
+        if serialized_as_archive:
+            self.__restore_storage_from_archive(serialized_data)
+
         self.__client = chromadb.PersistentClient(
             path=self.__temp_dir,
             settings=Settings(anonymized_telemetry=False),
@@ -27,7 +36,7 @@ class ChromaIndexer:
             metadata={"hnsw:space": "l2"}
         )
         
-        if serialized_data is not None:
+        if serialized_data is not None and not serialized_as_archive:
             collection_data = pickle.loads(serialized_data)
             self.__add_in_batches(
                 ids=collection_data["ids"],
@@ -53,13 +62,7 @@ class ChromaIndexer:
         self.__collection.delete(ids=str_ids)
 
     def serialize(self) -> bytes:
-        results = self.__collection.get(include=["embeddings", "metadatas"])
-        collection_data = {
-            "ids": results["ids"],
-            "embeddings": results["embeddings"],
-            "metadatas": results["metadatas"]
-        }
-        return pickle.dumps(collection_data)
+        return self.__serialize_storage_to_archive()
 
     def search(self, text: str, number_of_results: int = 10, filter: Optional[str] = None) -> Tuple[np.ndarray, np.ndarray]:
         query_embedding = self.embedder.embed(text)
@@ -155,6 +158,35 @@ class ChromaIndexer:
                 embeddings=embeddings[i:end_idx],
                 metadatas=metadatas[i:end_idx]
             )
+
+    def __is_storage_archive(self, serialized_data: bytes) -> bool:
+        return serialized_data.startswith(self.__SERIALIZED_ARCHIVE_MAGIC)
+
+    def __serialize_storage_to_archive(self) -> bytes:
+        archive_buffer = io.BytesIO()
+        with tarfile.open(fileobj=archive_buffer, mode="w:gz") as tar:
+            for root, _, files in os.walk(self.__temp_dir):
+                for file_name in files:
+                    file_path = os.path.join(root, file_name)
+                    archive_path = os.path.relpath(file_path, self.__temp_dir)
+                    tar.add(file_path, arcname=archive_path, recursive=False)
+
+        return self.__SERIALIZED_ARCHIVE_MAGIC + archive_buffer.getvalue()
+
+    def __restore_storage_from_archive(self, serialized_data: bytes):
+        archive_payload = serialized_data[len(self.__SERIALIZED_ARCHIVE_MAGIC):]
+        with tarfile.open(fileobj=io.BytesIO(archive_payload), mode="r:gz") as tar:
+            self.__extract_archive_safely(tar)
+
+    def __extract_archive_safely(self, tar: tarfile.TarFile):
+        target_root = os.path.abspath(self.__temp_dir)
+
+        for member in tar.getmembers():
+            member_target = os.path.abspath(os.path.join(target_root, member.name))
+            if not member_target.startswith(target_root + os.sep):
+                raise ValueError("Invalid archive entry path")
+
+        tar.extractall(path=target_root)
     
     def __del__(self):
         if os.path.exists(self.__temp_dir):
