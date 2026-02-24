@@ -1,11 +1,11 @@
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-
 class FilesDocumentConverter:
-    def __init__(self):
-        self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1000,
-            chunk_overlap=100,
-        )
+    def __init__(self, text_splitter):
+        self.__text_splitter = text_splitter
+
+    def get_details(self):
+        return {
+            "splitter": self.__text_splitter.get_details(),
+        }
 
     def convert(self, document):
         return [{
@@ -33,7 +33,7 @@ class FilesDocumentConverter:
         
         for content_part in document['content']:
             if content_part['text'].strip():
-                for chunk in self.text_splitter.split_text(content_part['text']):
+                for chunk in self.__text_splitter.split_text(content_part['text']):
                     chunks.append({
                         **({"metadata": content_part['metadata']} if "metadata" in content_part else {}),
                         "indexedData": chunk

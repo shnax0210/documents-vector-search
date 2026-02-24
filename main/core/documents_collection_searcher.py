@@ -1,16 +1,16 @@
 import json
 import numpy as np
 
-
-_RRF_K = 60
-
-
 class DocumentCollectionSearcher:
-    def __init__(self, collection_name, indexers, persister, filter=None):
+    def __init__(self, collection_name, indexers, persister, filter=None, rrf_k=60):
+        if rrf_k <= 0:
+            raise ValueError("rrf_k should be greater than 0")
+
         self.collection_name = collection_name
         self.__indexers = indexers
         self.__persister = persister
         self.__filter = filter
+        self.__rrf_k = rrf_k
 
         for indexer in self.__indexers:
             if self.__filter and not indexer.support_metadata():
@@ -49,7 +49,7 @@ class DocumentCollectionSearcher:
                 chunk_id = int(chunk_id)
                 if chunk_id not in rrf_scores:
                     rrf_scores[chunk_id] = 0.0
-                rrf_scores[chunk_id] += 1.0 / (_RRF_K + rank + 1)
+                rrf_scores[chunk_id] += 1.0 / (self.__rrf_k + rank + 1)
 
         sorted_chunks = sorted(rrf_scores.items(), key=lambda x: x[1], reverse=True)
         sorted_chunks = sorted_chunks[:max_number_of_chunks]

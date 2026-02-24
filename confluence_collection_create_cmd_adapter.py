@@ -7,6 +7,7 @@ from main.sources.confluence.confluence_document_converter import ConfluenceDocu
 from main.sources.confluence.confluence_cloud_document_reader import ConfluenceCloudDocumentReader
 from main.sources.confluence.confluence_cloud_document_converter import ConfluenceCloudDocumentConverter
 from main.factories.create_collection_factory import create_collection_creator
+from main.splitter.text_splitter import TextSplitter
 
 setup_root_logger()
 
@@ -19,7 +20,11 @@ ap.add_argument("-cql", "--cql", required=False, default="", help="Confluence qu
 ap.add_argument("-indexers", "--indexers", required=False, default=["indexer_ChromaDb__embeddings_all-MiniLM-L6-v2", "indexer_SqlLiteBM25"], help="List on indexer names", nargs='+')
 
 ap.add_argument("-readOnlyFirstLevelComments", "--readOnlyFirstLevelComments", action="store_true", required=False, default=False, help="Confluence has hierarchical comments, first level comments are read by default, but for other ones additional call is needed what can slowdown the process. Pass this argument to read only first level comments and have better performance.")
+ap.add_argument("-chunkSize", "--chunkSize", required=False, default=1000, type=int, help="Chunk size for text splitting (default: 1000)")
+ap.add_argument("-chunkOverlap", "--chunkOverlap", required=False, default=100, type=int, help="Chunk overlap for text splitting (default: 100)")
 args = vars(ap.parse_args())
+
+text_splitter = TextSplitter(chunk_size=args['chunkSize'], chunk_overlap=args['chunkOverlap'])
 
 # Detect if it's Confluence Cloud or Server/Data Center based on URL
 is_cloud = args['url'].endswith('.atlassian.net')
@@ -37,7 +42,7 @@ if is_cloud:
                                                                email=email,
                                                                api_token=api_token,
                                                                read_all_comments=(not args['readOnlyFirstLevelComments']))
-    confluence_document_converter = ConfluenceCloudDocumentConverter()
+    confluence_document_converter = ConfluenceCloudDocumentConverter(text_splitter)
 
 else:
     # Confluence Server/Data Center setup
@@ -54,7 +59,7 @@ else:
                                                           login=login, 
                                                           password=password,
                                                           read_all_comments=(not args['readOnlyFirstLevelComments']))
-    confluence_document_converter = ConfluenceDocumentConverter()
+    confluence_document_converter = ConfluenceDocumentConverter(text_splitter)
 
 confluence_collection_creator = create_collection_creator(collection_name=args['collection'],
                                                           indexers=args['indexers'],

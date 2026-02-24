@@ -1,14 +1,16 @@
 import os
 
 from bs4 import BeautifulSoup
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+
 
 class ConfluenceDocumentConverter:
-    def __init__(self):
-        self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1000,
-            chunk_overlap=100,
-        )
+    def __init__(self, text_splitter):
+        self.__text_splitter = text_splitter
+
+    def get_details(self):
+        return {
+            "splitter": self.__text_splitter.get_details(),
+        }
 
     def convert(self, document):
         return [{
@@ -39,7 +41,7 @@ class ConfluenceDocumentConverter:
         body_and_comments = self.__fetch_body_and_comments(document)
         
         if body_and_comments:
-            for chunk in self.text_splitter.split_text(body_and_comments):
+            for chunk in self.__text_splitter.split_text(body_and_comments):
                 chunks.append({
                     "indexedData": chunk
                 })

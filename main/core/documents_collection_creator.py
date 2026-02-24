@@ -268,6 +268,7 @@ class DocumentCollectionCreator:
             "numberOfDocuments": number_of_documents,
             "numberOfChunks": number_of_chunks,
             "reader": self.document_reader.get_reader_details(),
+            "converter": self.document_converter.get_details(),
             "indexers": [{ "name": indexer.get_name() } for indexer in self.document_indexers],
         }
     

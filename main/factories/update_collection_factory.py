@@ -15,6 +15,7 @@ from main.sources.files.files_document_reader import FilesDocumentReader
 from main.sources.files.files_document_converter import FilesDocumentConverter
 from main.indexes.indexer_factory import load_indexer
 from main.core.documents_collection_creator import DocumentCollectionCreator, OPERATION_TYPE
+from main.splitter.text_splitter import TextSplitter
 
 from main.utils.performance import log_execution_duration
 
@@ -72,6 +73,15 @@ def __create_reader_and_converter(manifest):
     raise Exception(f"Unknown document reader type: {manifest['reader']['type']}")
 
 
+def __create_text_splitter(manifest):
+    converter_config = manifest.get('converter', {})
+    splitter_config = converter_config.get('splitter', {})
+    return TextSplitter(
+        chunk_size=splitter_config.get('chunkSize', 1000),
+        chunk_overlap=splitter_config.get('chunkOverlap', 100),
+    )
+
+
 def __create_jira_reader_and_converter(manifest):
     token = os.environ.get('JIRA_TOKEN')
     login = os.environ.get('JIRA_LOGIN')
@@ -86,7 +96,7 @@ def __create_jira_reader_and_converter(manifest):
                                     login=login, 
                                     password=password, 
                                     batch_size=manifest['reader']['batchSize'])
-    converter = JiraDocumentConverter()
+    converter = JiraDocumentConverter(__create_text_splitter(manifest))
     return reader,converter
 
 def __create_jira_cloud_reader_and_converter(manifest):
@@ -104,7 +114,7 @@ def __create_jira_cloud_reader_and_converter(manifest):
                                     email=email,
                                     api_token=api_token, 
                                     batch_size=manifest['reader']['batchSize'])
-    converter = JiraCloudDocumentConverter()
+    converter = JiraCloudDocumentConverter(__create_text_splitter(manifest))
     return reader,converter
 
 def __create_confluence_reader_and_converter(manifest):
@@ -125,7 +135,7 @@ def __create_confluence_reader_and_converter(manifest):
                                           password=password, 
                                           batch_size=manifest['reader']['batchSize'],
                                           read_all_comments=manifest['reader']['readAllComments'],)
-    converter = ConfluenceDocumentConverter()
+    converter = ConfluenceDocumentConverter(__create_text_splitter(manifest))
     return reader,converter
 
 def __create_confluence_cloud_reader_and_converter(manifest):
@@ -144,7 +154,7 @@ def __create_confluence_cloud_reader_and_converter(manifest):
                                           api_token=api_token, 
                                           batch_size=manifest['reader']['batchSize'],
                                           read_all_comments=manifest['reader']['readAllComments'],)
-    converter = ConfluenceCloudDocumentConverter()
+    converter = ConfluenceCloudDocumentConverter(__create_text_splitter(manifest))
     return reader,converter
 
 
@@ -163,5 +173,5 @@ def __create_local_files_reader_and_converter(manifest):
                                 exclude_patterns=exclude_patterns,
                                 fail_fast=fail_fast,
                                 start_from_time=update_time)
-    converter = FilesDocumentConverter()
+    converter = FilesDocumentConverter(__create_text_splitter(manifest))
     return reader, converter

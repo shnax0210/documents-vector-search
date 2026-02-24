@@ -140,6 +140,7 @@ uv run collection_search_cmd_adapter.py \
 
 - `--includeMatchedChunksText` — include matched text chunks in results
 - `--filter` — filter by metafields (see below)
+- `--rrfK` — RRF constant for multi-index fusion (default: `60`)
 
 #### Filtering by metafields
 
@@ -209,10 +210,11 @@ Add to your MCP config (e.g., `.vscode/mcp.json` for VS Code + GitHub Copilot):
 }
 ```
 
-The MCP may start slowly in case of big amount of data and even can fail sometimes (simple restart fixes that in 100% cases for me)!
+The MCP may start slowly in case of big amount of data.
 
 - Replace `${collectionName}` and `${fullPathToRootProjectFolder}` with real values
 - Use `--maxNumberOfChunks {number}` to control how many text chunks are returned (more = better search, but may exceed model context window)
+- Use `--rrfK {number}` to tune Reciprocal Rank Fusion behavior for multi-index search
 - Use `--filter` for metafield filtering ([details](#filtering-by-metafields))
 
 **Prompt examples:**
@@ -235,5 +237,6 @@ See `./main/core/documents_collection_creator.py` for creation/update details an
 
 ## Good to know
 
-- **Incremental updates** — only new/changed documents are re-indexed. Uses `lastModifiedDocumentTime` from `manifest.json` (minus 1 day buffer to avoid missing concurrent updates)
-- **Caching** — Jira/Confluence collection creation caches downloaded documents in `./data/caches/{hash}`. Same parameters = same cache. If you need fresh data, either run an update after creation, or delete the cache folder manually
+- **Incremental updates** — only new/changed documents are re-indexed. Uses `lastModifiedDocumentTime` from `manifest.json` (minus 1 day buffer to avoid missing concurrent updates and possible issues with different time zones);
+- **Caching** — Jira/Confluence collection creation caches downloaded documents in `./data/caches/{hash}`. Same parameters = same cache. If you need fresh data, either run an update after creation, or delete the cache folder manually;
+- there are more parameters in scripts, use "--help" to get more.

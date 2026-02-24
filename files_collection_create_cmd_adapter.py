@@ -5,6 +5,7 @@ from main.utils.logger import setup_root_logger
 from main.sources.files.files_document_reader import FilesDocumentReader
 from main.sources.files.files_document_converter import FilesDocumentConverter
 from main.factories.create_collection_factory import create_collection_creator
+from main.splitter.text_splitter import TextSplitter
 
 setup_root_logger()
 
@@ -18,13 +19,17 @@ ap.add_argument("-excludePatterns", "--excludePatterns", required=False, default
 ap.add_argument("-indexers", "--indexers", required=False, default=["indexer_ChromaDb__embeddings_all-MiniLM-L6-v2", "indexer_SqlLiteBM25"], help="List on indexer names", nargs='+')
 
 ap.add_argument("-failFast", "--failFast", action="store_true", required=False, default=False, help="If passed - the process will stop on the first error. Otherwise, it will try to process all files and log errors for those that failed.")
+ap.add_argument("-chunkSize", "--chunkSize", required=False, default=1000, type=int, help="Chunk size for text splitting (default: 1000)")
+ap.add_argument("-chunkOverlap", "--chunkOverlap", required=False, default=100, type=int, help="Chunk overlap for text splitting (default: 100)")
 args = vars(ap.parse_args())
+
+text_splitter = TextSplitter(chunk_size=args['chunkSize'], chunk_overlap=args['chunkOverlap'])
 
 files_document_reader = FilesDocumentReader(base_path=args['basePath'], 
                                             include_patterns=args['includePatterns'], 
                                             exclude_patterns=args['excludePatterns'],
                                             fail_fast=args['failFast'])
-files_document_converter = FilesDocumentConverter()
+files_document_converter = FilesDocumentConverter(text_splitter)
 
 collection_name = args['collection'] if args['collection'] else os.path.basename(args['basePath'])
 files_collection_creator = create_collection_creator(collection_name=collection_name,
