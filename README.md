@@ -38,7 +38,7 @@ More context: [Medium article](https://medium.com/@shnax0210/mcp-tool-for-vector
 ## Updates
 
 ### 2026/02/24 — Faster Chroma deserialization (interface preserved)
-- New Chroma index payload format stores/restores the underlying Chroma storage directly, avoiding full Python-level embeddings replay during load and end up with significant performance gain (about x2);
+- New Chroma index payload format stores/restores the underlying Chroma storage directly, avoiding full Python-level embeddings replay during load and end up with significant performance gain (x2-x20 depends from a case);
 - Existing collections remain supported (backward-compatible load path for previous payload format).
 
 ### 2026/02/22 — SQLite BM25, Reciprocal Rank Fusion, common filter syntax
@@ -213,8 +213,6 @@ Add to your MCP config (e.g., `.vscode/mcp.json` for VS Code + GitHub Copilot):
     }
 }
 ```
-
-The MCP may start slowly in case of big amount of data.
 
 - Replace `${collectionName}` and `${fullPathToRootProjectFolder}` with real values
 - Use `--maxNumberOfChunks {number}` to control how many text chunks are returned (more = better search, but may exceed model context window)

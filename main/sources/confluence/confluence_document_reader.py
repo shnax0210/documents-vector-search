@@ -1,4 +1,5 @@
 import requests
+import logging
 
 from ...utils.retry import execute_with_retry
 from ...utils.batch import read_items_in_batches
@@ -96,7 +97,11 @@ class ConfluenceDocumentReader:
                               max_skipped_items_in_row=self.max_skipped_items_in_row,
                               itemsName="comments")
 
-        return [comment for comment in comments_generator]
+        try:
+            return [comment for comment in comments_generator]
+        except Exception as error:
+            logging.warning(f"Failed to read comments for page {page['id']}: {error}. Comments will be skipped.")
+            return page['children']['comment']['results']
 
     def __read_items(self):
         read_batch_func = lambda start_at, batch_size: self.__request(
