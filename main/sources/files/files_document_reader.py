@@ -203,7 +203,7 @@ class FilesDocumentReader(BaseDocumentReader):
                     and self.__is_file_included(relative_path)
                     and not any(relative_path.endswith(ext) for ext in EXCLUDED_FILE_EXTENSIONS)
                     and not self.__is_file_excluded(relative_path)
-                    and (self.start_from_time is None or self.__read_file_modification_time(full_path) >= self.start_from_time)
+                    and (self.start_from_time is None or self.__read_file_modification_time(full_path) > self.start_from_time)
                 ):
                     file_paths.append(full_path)
 

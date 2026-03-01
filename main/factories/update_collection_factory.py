@@ -45,8 +45,11 @@ def __create_collection_updater(collection_name):
                                      operation_type=OPERATION_TYPE.UPDATE)
 
 
+def __calculate_exact_update_time(manifest):
+    return datetime.fromisoformat(manifest['lastModifiedDocumentTime'])
+
 def __calculate_update_time(manifest):
-    return datetime.fromisoformat(manifest['lastModifiedDocumentTime']) - timedelta(days=1)
+    return __calculate_exact_update_time(manifest) - timedelta(days=1)
 
 def __calculate_update_date(manifest):
     return __calculate_update_time(manifest).date()
@@ -166,7 +169,7 @@ def __create_local_files_reader_and_converter(manifest):
     exclude_patterns = reader_config.get('excludePatterns', [])
     fail_fast = reader_config.get('failFast', False)
 
-    update_time = __calculate_update_time(manifest)
+    update_time = __calculate_exact_update_time(manifest)
     
     reader = FilesDocumentReader(base_path=base_path,
                                 include_patterns=include_patterns,
