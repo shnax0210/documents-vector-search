@@ -1,13 +1,16 @@
 import json
 import hashlib
 import logging
+from typing import Generator
+from main.sources.base_document_reader import BaseDocumentReader
+from main.persisters.base_persister import BasePersister
 
-class CacheReaderDecorator:
-    def __init__(self, reader, persister):
+class CacheReaderDecorator(BaseDocumentReader):
+    def __init__(self, reader: BaseDocumentReader, persister: BasePersister):
         self.reader = reader
         self.persister = persister
 
-    def read_all_documents(self):
+    def read_all_documents(self) -> Generator:
         cache_key = self.__build_cache_key()
 
         if self.persister.is_path_exists(cache_key) and self.persister.is_path_exists(f"{cache_key}_completed"):
@@ -26,7 +29,7 @@ class CacheReaderDecorator:
             
             self.persister.save_text_file("", f"{cache_key}_completed")
     
-    def get_number_of_documents(self):
+    def get_number_of_documents(self) -> int:
         cache_key = self.__build_cache_key()
         
         if self.persister.is_path_exists(cache_key) and self.persister.is_path_exists(f"{cache_key}_completed"):
@@ -38,7 +41,7 @@ class CacheReaderDecorator:
     def get_reader_details(self) -> dict:
         return self.reader.get_reader_details()
 
-    def remove_cache(self):
+    def remove_cache(self) -> None:
         cache_key = self.__build_cache_key()
 
         self.persister.remove_folder(cache_key)

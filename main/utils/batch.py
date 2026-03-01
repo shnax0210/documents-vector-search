@@ -1,4 +1,5 @@
 import logging
+from typing import Generator
 
 def read_items_in_batches(read_batch_func, 
                           fetch_items_from_result_func, 
@@ -6,7 +7,7 @@ def read_items_in_batches(read_batch_func,
                           batch_size, 
                           max_skipped_items_in_row=3,
                           itemsName="items",
-                          cursor_parser=None):
+                          cursor_parser=None) -> Generator:
     are_there_more_items_to_read = True
     start_at = 0
     number_of_items_to_read_one_by_one = 0

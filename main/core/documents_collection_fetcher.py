@@ -1,12 +1,14 @@
 import json
 
+from ..persisters.base_persister import BasePersister
+
 class DocumentCollectionFetcher:
-    def __init__(self, collection_name, persister):
+    def __init__(self, collection_name: str, persister: BasePersister):
         self.collection_name = collection_name
         self.__persister = persister
         self.__documents_by_url = None
 
-    def fetch(self, id=None, url=None, start_line=1, end_line=200):
+    def fetch(self, id=None, url=None, start_line=1, end_line=200) -> dict:
         if not id and not url:
             raise ValueError("Either id or url must be provided")
 

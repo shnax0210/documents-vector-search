@@ -19,7 +19,7 @@ from main.splitter.text_splitter import TextSplitter
 
 from main.utils.performance import log_execution_duration
 
-def create_collection_updater(collection_name):
+def create_collection_updater(collection_name) -> DocumentCollectionCreator:
     return log_execution_duration(
         lambda: __create_collection_updater(collection_name),
         identifier=f"Preparing collection updater"

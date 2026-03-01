@@ -1,13 +1,17 @@
-class JiraCloudDocumentConverter:
-    def __init__(self, text_splitter):
+from main.sources.base_document_converter import BaseDocumentConverter
+from main.splitter.base_text_splitter import BaseTextSplitter
+
+
+class JiraCloudDocumentConverter(BaseDocumentConverter):
+    def __init__(self, text_splitter: BaseTextSplitter):
         self.__text_splitter = text_splitter
 
-    def get_details(self):
+    def get_details(self) -> dict:
         return {
             "splitter": self.__text_splitter.get_details(),
         }
 
-    def convert(self, document):
+    def convert(self, document) -> list[dict]:
         return [{
             "id": document['key'],
             "url": self.__build_url(document),

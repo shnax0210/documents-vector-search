@@ -4,7 +4,7 @@ from main.core.documents_collection_searcher import DocumentCollectionSearcher
 
 from main.utils.performance import log_execution_duration
 
-def create_collection_searcher(collection_name, index_names, filter=None, rrf_k=60):
+def create_collection_searcher(collection_name, index_names, filter=None, rrf_k=60) -> DocumentCollectionSearcher:
     return log_execution_duration(
         lambda: __create_collection_searcher(collection_name, index_names, filter, rrf_k),
         identifier=f"Preparing collection searcher"

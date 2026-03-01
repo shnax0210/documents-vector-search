@@ -4,9 +4,10 @@ import numpy as np
 from typing import List, Tuple, Optional
 
 from main.indexes.filter_parser import parse_filter, FilterNode, FilterCondition, FilterGroup
+from main.indexes.indexers.base_indexer import BaseIndexer
 
 
-class SqlliteIndexer:
+class SqlliteIndexer(BaseIndexer):
     def __init__(self, name: str, serialized_data: Optional[bytes] = None):
         self.name = name
         self.__conn = sqlite3.connect(":memory:")
@@ -26,7 +27,7 @@ class SqlliteIndexer:
     def get_name(self) -> str:
         return self.name
 
-    def index_texts(self, ids: np.ndarray, texts: List[str], items_metadata: list[dict] = None):
+    def index_texts(self, ids: np.ndarray, texts: List[str], items_metadata: list[dict] = None) -> None:
         rows = [(str(int(id_val)), text) for id_val, text in zip(ids, texts)]
         self.__conn.executemany(
             "INSERT INTO documents(doc_id, content) VALUES (?, ?)", rows
@@ -40,7 +41,7 @@ class SqlliteIndexer:
 
         self.__conn.commit()
 
-    def remove_ids(self, ids: np.ndarray):
+    def remove_ids(self, ids: np.ndarray) -> None:
         str_ids = [str(int(id_val)) for id_val in ids]
         placeholders = ",".join("?" * len(str_ids))
         self.__conn.execute(

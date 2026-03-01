@@ -4,6 +4,8 @@ import json
 import datetime
 import re
 from unstructured.partition.auto import partition
+from typing import Generator
+from main.sources.base_document_reader import BaseDocumentReader
 
 EXCLUDED_FILE_EXTENSIONS = [
     ".DS_Store",
@@ -105,7 +107,7 @@ EXCLUDED_FILE_EXTENSIONS = [
     ".ply",
 ]
 
-class FilesDocumentReader:
+class FilesDocumentReader(BaseDocumentReader):
     def __init__(self, base_path: str, 
                  include_patterns=[".*"], 
                  exclude_patterns=[], 
@@ -126,7 +128,7 @@ class FilesDocumentReader:
         }
         self.default_reader = self.__read_file_by_unstructured_lib
 
-    def read_all_documents(self):
+    def read_all_documents(self) -> Generator:
         result_stats = {
             "successFiles": [],
             "errorFiles": [],
@@ -154,7 +156,7 @@ class FilesDocumentReader:
         
         logging.info(f"Files reading stats: \n{json.dumps(result_stats, indent=2, ensure_ascii=False)}")
 
-    def get_number_of_documents(self):
+    def get_number_of_documents(self) -> int:
         return len(self.__read_file_pathes())
 
     def get_reader_details(self) -> dict:

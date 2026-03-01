@@ -1,7 +1,10 @@
 import json
+from typing import List, Optional
+from .indexers.base_indexer import BaseIndexer
 from .indexers.faiss_indexer import FaissIndexer
 from .indexers.chroma_indexer import ChromaIndexer
 from .indexers.sqllite_indexer import SqlliteIndexer
+from .embeddings.base_embedder import BaseEmbedder
 from .embeddings.sentence_embeder import SentenceEmbedder
 
 def __get_available_indexes(collection_name, persister):
@@ -26,7 +29,7 @@ def __split_indexer_name(indexer_name):
         return parts[0], parts[1]
     raise ValueError(f"Invalid indexer name format: {indexer_name}")
 
-def __create_sentence_embedder(embedding_model):
+def __create_sentence_embedder(embedding_model) -> BaseEmbedder:
     # Check for old name formats for backward compatibility
     model = __create_sentence_embedder_by_old_embedding_model_name(embedding_model)
     if model is not None:
@@ -51,7 +54,7 @@ def __create_sentence_embedder_by_old_embedding_model_name(embedding_model):
     
     return None
 
-def create_indexer(indexer_name):
+def create_indexer(indexer_name) -> BaseIndexer:
     indexer_type, embedding_model = __split_indexer_name(indexer_name)
 
     if indexer_type == "indexer_FAISS_IndexFlatL2":
@@ -65,7 +68,7 @@ def create_indexer(indexer_name):
 
     raise ValueError(f"Unknown indexer name: {indexer_name}")
 
-def load_indexers(index_names, collection_name, persister):
+def load_indexers(index_names, collection_name, persister) -> List[BaseIndexer]:
     if index_names is None:
         names = __get_available_indexes(collection_name, persister)
     else:
@@ -73,7 +76,7 @@ def load_indexers(index_names, collection_name, persister):
     return [load_indexer(name, collection_name, persister) for name in names]
 
 
-def load_indexer(indexer_name, collection_name, persister):
+def load_indexer(indexer_name, collection_name, persister) -> BaseIndexer:
     if indexer_name is None:
         available_indexes = __get_available_indexes(collection_name, persister)
         

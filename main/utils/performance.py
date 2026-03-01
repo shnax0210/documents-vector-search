@@ -1,7 +1,8 @@
 import time
 import logging
+from typing import Any
 
-def execute_and_measure_duration(func):
+def execute_and_measure_duration(func) -> tuple:
     start_time = time.time()
 
     result = None
@@ -17,7 +18,7 @@ def execute_and_measure_duration(func):
     return result, error, end_time - start_time
 
 
-def log_execution_duration(func, identifier, enabled=True):
+def log_execution_duration(func, identifier, enabled=True) -> Any:
     if enabled:
         logging.info('------------------------------------------------------------------')
         logging.info(f'Started "{identifier}"')

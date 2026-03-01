@@ -5,7 +5,7 @@ from main.persisters.disk_persister import DiskPersister
 
 from main.utils.performance import log_execution_duration
 
-def create_collection_creator(collection_name, indexers, document_reader, document_converter, use_cache=True):
+def create_collection_creator(collection_name, indexers, document_reader, document_converter, use_cache=True) -> DocumentCollectionCreator:
     return log_execution_duration(
         lambda: __create_collection_creator(collection_name, indexers, document_reader, document_converter, use_cache),
         identifier=f"Preparing collection creator"

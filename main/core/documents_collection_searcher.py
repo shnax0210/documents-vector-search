@@ -1,8 +1,12 @@
 import json
+from typing import List, Optional
 import numpy as np
 
+from ..indexes.indexers.base_indexer import BaseIndexer
+from ..persisters.base_persister import BasePersister
+
 class DocumentCollectionSearcher:
-    def __init__(self, collection_name, indexers, persister, filter=None, rrf_k=60):
+    def __init__(self, collection_name: str, indexers: List[BaseIndexer], persister: BasePersister, filter: Optional[str] = None, rrf_k: int = 60):
         if rrf_k <= 0:
             raise ValueError("rrf_k should be greater than 0")
 
@@ -22,7 +26,7 @@ class DocumentCollectionSearcher:
                max_number_of_documents=None, 
                include_text_content=False, 
                include_all_chunks_content=False, 
-               include_matched_chunks_content=False):
+               include_matched_chunks_content=False) -> dict:
         if len(self.__indexers) == 1:
             scores, indexes = self.__indexers[0].search(text, max_number_of_chunks, self.__filter)
         else:

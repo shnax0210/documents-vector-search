@@ -1,10 +1,12 @@
 import requests
 import logging
+from typing import Generator
 
 from ...utils.retry import execute_with_retry
 from ...utils.batch import read_items_in_batches
+from main.sources.base_document_reader import BaseDocumentReader
 
-class ConfluenceDocumentReader:
+class ConfluenceDocumentReader(BaseDocumentReader):
     def __init__(self, 
                  base_url, 
                  query,
@@ -36,14 +38,14 @@ class ConfluenceDocumentReader:
         self.read_all_comments = read_all_comments
         self.timeout = timeout
     
-    def read_all_documents(self):
+    def read_all_documents(self) -> Generator:
         for page in self.__read_items():
             yield {
                 "page": page,
                 "comments": self.__read_comments(page)
             }
 
-    def get_number_of_documents(self):
+    def get_number_of_documents(self) -> int:
         search_result = self.__request(
             self.__add_url_prefix('/rest/api/content/search'),
             {
@@ -65,7 +67,7 @@ class ConfluenceDocumentReader:
         }
     
     @staticmethod
-    def build_page_query(user_query):
+    def build_page_query(user_query) -> str:
         if not user_query:
             return "type=page"
 

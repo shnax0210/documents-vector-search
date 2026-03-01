@@ -11,12 +11,14 @@ from typing import List, Tuple, Optional
 from datetime import datetime
 
 from main.indexes.filter_parser import parse_filter, FilterNode, FilterCondition, FilterGroup
+from main.indexes.indexers.base_indexer import BaseIndexer
+from main.indexes.embeddings.base_embedder import BaseEmbedder
 
 
-class ChromaIndexer:
+class ChromaIndexer(BaseIndexer):
     __SERIALIZED_ARCHIVE_MAGIC = b"CHROMA_ARCHIVE_V1\0"
 
-    def __init__(self, name: str, embedder, serialized_data: Optional[bytes] = None):
+    def __init__(self, name: str, embedder: BaseEmbedder, serialized_data: Optional[bytes] = None):
         self.name = name
         self.embedder = embedder
         
@@ -47,7 +49,7 @@ class ChromaIndexer:
     def get_name(self) -> str:
         return self.name
 
-    def index_texts(self, ids: np.ndarray, texts: List[str], items_metadata: list[dict] = None):
+    def index_texts(self, ids: np.ndarray, texts: List[str], items_metadata: list[dict] = None) -> None:
         embeddings = self.embedder.embed(texts)
         str_ids = [str(int(id_val)) for id_val in ids]
 
@@ -57,7 +59,7 @@ class ChromaIndexer:
             metadatas=self.__adjust_metadata(items_metadata)
         )
 
-    def remove_ids(self, ids: np.ndarray):
+    def remove_ids(self, ids: np.ndarray) -> None:
         str_ids = [str(int(id_val)) for id_val in ids]
         self.__collection.delete(ids=str_ids)
 

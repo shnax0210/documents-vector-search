@@ -1,12 +1,17 @@
 import json
 from datetime import datetime, timezone
 from enum import Enum
+from typing import List
 import numpy as np
 import logging
 
 from ..utils.progress_bar import wrap_generator_with_progress_bar
 from ..utils.progress_bar import wrap_iterator_with_progress_bar
 from ..utils.performance import log_execution_duration
+from ..sources.base_document_reader import BaseDocumentReader
+from ..sources.base_document_converter import BaseDocumentConverter
+from ..indexes.indexers.base_indexer import BaseIndexer
+from ..persisters.base_persister import BasePersister
 
 class OPERATION_TYPE(Enum):
     CREATE = "create"
@@ -15,10 +20,10 @@ class OPERATION_TYPE(Enum):
 class DocumentCollectionCreator:
     def __init__(self,
                  collection_name: str,
-                 document_reader,
-                 document_converter,
-                 document_indexers,
-                 persister,
+                 document_reader: BaseDocumentReader,
+                 document_converter: BaseDocumentConverter,
+                 document_indexers: List[BaseIndexer],
+                 persister: BasePersister,
                  operation_type: OPERATION_TYPE = OPERATION_TYPE.CREATE,
                  indexing_batch_size=500_000):
         self.operation_type = operation_type
@@ -29,7 +34,7 @@ class DocumentCollectionCreator:
         self.persister = persister
         self.indexing_batch_size = indexing_batch_size
 
-    def run(self):
+    def run(self) -> None:
         if self.operation_type == OPERATION_TYPE.CREATE:
             self.__create_collection()
             return

@@ -1,7 +1,8 @@
 import time
 import logging
+from typing import Any
 
-def execute_with_retry(func, func_identifier, retries=3, delay=1):
+def execute_with_retry(func, func_identifier, retries=3, delay=1) -> Any:
     for attempt in range(retries):
         try:
             return func()

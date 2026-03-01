@@ -1,9 +1,11 @@
 import requests
+from typing import Generator
 
 from ...utils.retry import execute_with_retry
 from ...utils.batch import read_items_in_batches
+from main.sources.base_document_reader import BaseDocumentReader
 
-class JiraDocumentReader:
+class JiraDocumentReader(BaseDocumentReader):
     def __init__(self, 
                  base_url, 
                  query,
@@ -31,10 +33,10 @@ class JiraDocumentReader:
         self.timeout = timeout
         self.fields = "summary,description,comment,created,updated,epic,parent,status,priority,assignee,reporter,issuetype"
 
-    def read_all_documents(self):
+    def read_all_documents(self) -> Generator:
         return self.__read_items()
 
-    def get_number_of_documents(self):
+    def get_number_of_documents(self) -> int:
         search_result = self.__request_items({
             'jql': self.query, 
             "startAt": 0, 
