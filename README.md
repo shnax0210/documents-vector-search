@@ -13,6 +13,7 @@
   - [Update collection](#update-collection)
   - [Search](#search)
     - [Filtering by metafields](#filtering-by-metafields)
+  - [Fetch](#fetch)
   - [Set up MCP](#set-up-mcp)
 - [Good to know](#good-to-know)
 
@@ -40,9 +41,10 @@ More context: [Medium article](https://medium.com/@shnax0210/mcp-tool-for-vector
 
 ## Updates
 
-### 2026/02/24 - More embedding models, TOON format for MCP
-- Aded ability to use any embedding model form next [list](https://huggingface.co/models?pipeline_tag=sentence-similarity&library=sentence-transformers&sort=trending). Check [How it works](#how-it-works) section for details.
-- MCP now supports [TOON](https://github.com/toon-format/toon) format for MCP. 
+### 2026/02/24 - More embedding models, TOON format for MCP, fetch document script and tool
+- Ability to use any embedding model form next [list](https://huggingface.co/models?pipeline_tag=sentence-similarity&library=sentence-transformers&sort=trending). Check [How it works](#how-it-works) section for details;
+- MCP now supports [TOON](https://github.com/toon-format/toon) format for MCP;
+- `collection_fetch_cmd_adapter.py` and MCP tool to fetch document from collection by id or url. For example, the tool can be useful when you need to find similar Jira ticket or Confluence to some existing one.
 
 ### 2026/02/24 — Faster Chroma deserialization (interface preserved)
 - New Chroma index payload format stores/restores the underlying Chroma storage directly, avoiding full Python-level embeddings replay during load and end up with significant performance gain (x2-x20 depends from a case);
@@ -222,6 +224,18 @@ Operators: `=`, `!=`, `>`, `>=`, `<`, `<=`. Use `and` / `or` to join conditions 
 --filter 'project = "PROJ" and lastModifiedAt > "2026-01-01"'
 --filter '(project = "PROJ1" or project = "PROJ2") and lastModifiedAt > "2026-01-01"'
 ```
+
+### Fetch
+
+```bash
+uv run collection_fetch_cmd_adapter.py \
+  --collection "${collectionName}" \
+  --id "${documentId}"
+```
+
+- `--id` or `--url` — document to fetch (at least one required)
+- `--startLine` / `--endLine` — line range to return (default: 1–200)
+- `--format` — output format: `json`, `json_with_indent` (default), or `toon`
 
 ### Set up MCP
 

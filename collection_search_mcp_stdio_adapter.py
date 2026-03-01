@@ -3,6 +3,7 @@ import argparse
 
 from mcp.server.fastmcp import FastMCP
 
+from main.factories.fetch_collection_factory import create_collection_fetcher
 from main.factories.search_collection_factory import create_collection_searcher
 from main.utils.formatting import format_object
 from main.utils.logger import setup_root_logger
@@ -29,11 +30,12 @@ ap.add_argument("-format", "--format", default="toon", required=False, choices=[
 args = vars(ap.parse_args())
 
 searcher = create_collection_searcher(collection_name=args['collection'], index_names=args['indexes'], filter=args['filter'], rrf_k=args['rrfK'])
+fetcher = create_collection_fetcher(collection_name=args['collection'])
 
 tool_description = """The tool allows searching in collection of documents by vector search. 
 Each document contains 'url' field, if you consider a document as relevant to the query, always include the 'url' field in the response, put it close to the information used from the document"""
 
-@mcp.tool(name=f"search_{args['collection']}", description=tool_description)
+@mcp.tool(name=f"search_in_{args['collection']}", description=tool_description)
 def search_documents(query: str) -> str:
     search_results = searcher.search(query, 
                                      max_number_of_chunks=args['maxNumberOfChunks'], 
@@ -42,7 +44,28 @@ def search_documents(query: str) -> str:
                                      include_matched_chunks_content=not args['includeFullText'])
 
     return format_object(search_results, args['format'])
-    
+
+
+fetch_tool_description = """The tool allows fetching a full document from the collection by its id or url.
+Use startLine and endLine to read a specific portion of the document. If document is too large, fetch it in parts.
+
+For Confluence:
+- `id` is the page id;
+- `url` is the page url.
+
+For Jira:
+- `id` is the issue key (e.g. PROJ-123);
+- `url` is the issue url.
+
+For files collection:
+- `id` is the relative path;
+- `url` is the absolute path with 'file://' prefix of the file on the file system.
+"""
+
+@mcp.tool(name=f"fetch_from_{args['collection']}", description=fetch_tool_description)
+def fetch_document(id: str = None, url: str = None, startLine: int = 1, endLine: int = 250) -> str:
+    result = fetcher.fetch(id=id, url=url, start_line=startLine, end_line=endLine)
+    return format_object(result, args['format'])
 
 if __name__ == "__main__":
     mcp.run(transport='stdio')
