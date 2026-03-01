@@ -41,10 +41,11 @@ More context: [Medium article](https://medium.com/@shnax0210/mcp-tool-for-vector
 
 ## Updates
 
-### 2026/02/24 - More embedding models, TOON format for MCP, fetch document script and tool
+### 2026/02/24 - More embedding models, TOON format for MCP, fetch document script and tool, subfolders metadata
 - Ability to use any embedding model form next [list](https://huggingface.co/models?pipeline_tag=sentence-similarity&library=sentence-transformers&sort=trending). Check [How it works](#how-it-works) section for details;
 - MCP now supports [TOON](https://github.com/toon-format/toon) format for MCP;
-- `collection_fetch_cmd_adapter.py` and MCP tool to fetch document from collection by id or url. For example, the tool can be useful when you need to find similar Jira ticket or Confluence to some existing one.
+- `collection_fetch_cmd_adapter.py` and MCP tool to fetch document from collection by id or url. For example, the tool can be useful when you need to find similar Jira ticket or Confluence to some existing one;
+- Subfolders metadata for files.
 
 ### 2026/02/24 — Faster Chroma deserialization (interface preserved)
 - New Chroma index payload format stores/restores the underlying Chroma storage directly, avoiding full Python-level embeddings replay during load and end up with significant performance gain (x2-x20 depends from a case);
@@ -223,6 +224,23 @@ Operators: `=`, `!=`, `>`, `>=`, `<`, `<=`. Use `and` / `or` to join conditions 
 --filter 'project = "PROJ"'
 --filter 'project = "PROJ" and lastModifiedAt > "2026-01-01"'
 --filter '(project = "PROJ1" or project = "PROJ2") and lastModifiedAt > "2026-01-01"'
+```
+
+**Files metafields:**
+
+| Field | Description |
+|---|---|
+| `createdAt` | File creation date |
+| `lastModifiedAt` | Last modified date |
+| `folder1` | First subfolder of the file path |
+| `folder2` | Second subfolder of the file path |
+| `folderN` | Nth subfolder of the file path (only present if path has N or more subfolders) |
+
+**Examples:**
+```bash
+--filter 'folder1 = "docs"'
+--filter 'folder1 = "docs" and folder2 = "api"'
+--filter '(folder2 = "api" or folder2 = "presentations") and lastModifiedAt > "2026-01-01"'
 ```
 
 ### Fetch

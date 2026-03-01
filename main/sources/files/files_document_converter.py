@@ -1,3 +1,5 @@
+import os
+
 from main.sources.base_document_converter import BaseDocumentConverter
 from main.splitter.base_text_splitter import BaseTextSplitter
 
@@ -18,6 +20,7 @@ class FilesDocumentConverter(BaseDocumentConverter):
             "metadata": {
                 "createdAt": document['createdTime'],
                 "lastModifiedAt": document['modifiedTime'],
+                **self.__build_folder_metadata(document['fileRelativePath']),
             },
             "text": self.__build_document_text(document),
             "chunks": self.__split_to_chunks(document)
@@ -45,6 +48,11 @@ class FilesDocumentConverter(BaseDocumentConverter):
 
             
         return chunks
+
+    def __build_folder_metadata(self, path) -> dict:
+        folders = os.path.dirname(path).split(os.sep)
+        folders = [f for f in folders if f]
+        return {f"folder{i + 1}": folder for i, folder in enumerate(folders)}
 
     def __build_url(self, document):
         return f"file://{document['fileFullPath']}"
