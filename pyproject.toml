@@ -13,4 +13,5 @@ dependencies = [
     "requests>=2.32.5",
     "sentence-transformers>=5.2.0",
     "unstructured[all-docs]>=0.18.24",
+    "toons>=0.5.3",
 ]

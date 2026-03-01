@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-import json
 import argparse
 
 from mcp.server.fastmcp import FastMCP
 
 from main.factories.search_collection_factory import create_collection_searcher
+from main.utils.formatting import format_object
 from main.utils.logger import setup_root_logger
 
 # Write to stderr for MCP, since in other case logs will be mixed with stdout and break communication between MCP and the tool adapter
@@ -24,6 +24,8 @@ ap.add_argument("-maxNumberOfChunks", "--maxNumberOfChunks", required=False, typ
 ap.add_argument("-maxNumberOfDocuments", "--maxNumberOfDocuments", required=False, type=int, default=None, help="Max number of documents in result")
 
 ap.add_argument("-includeFullText", "--includeFullText", action="store_true", required=False, default=False, help="If passed - full text content will be included in the search result. By default only matched chunks content is included. If passed, it's better to reduce --maxNumberOfChunks or set small --maxNumberOfDocuments like 10-30 to avoid too big response and breaking AI agent.")
+
+ap.add_argument("-format", "--format", default="toon", required=False, choices=['json', 'json_with_indent', 'toon'], help="Output format for the search result (e.g., 'json', 'json_with_indent', 'toon')")
 args = vars(ap.parse_args())
 
 searcher = create_collection_searcher(collection_name=args['collection'], index_names=args['indexes'], filter=args['filter'], rrf_k=args['rrfK'])
@@ -39,7 +41,7 @@ def search_documents(query: str) -> str:
                                      include_text_content=args['includeFullText'],
                                      include_matched_chunks_content=not args['includeFullText'])
 
-    return json.dumps(search_results, indent=2, ensure_ascii=False)
+    return format_object(search_results, args['format'])
     
 
 if __name__ == "__main__":

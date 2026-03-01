@@ -1,7 +1,7 @@
-import json
 import argparse
 import logging
 
+from main.utils.formatting import format_object
 from main.utils.logger import setup_root_logger
 from main.utils.performance import log_execution_duration
 from main.factories.search_collection_factory import create_collection_searcher
@@ -23,6 +23,8 @@ ap.add_argument("-maxNumberOfDocuments", "--maxNumberOfDocuments", required=Fals
 ap.add_argument("-includeFullText", "--includeFullText", action="store_true", required=False, default=False, help="If passed - full text content will be included in the search result.")
 ap.add_argument("-includeAllChunksText", "--includeAllChunksText", action="store_true", required=False, default=False, help="If passed - all chunks text content will be included in the search result.")
 ap.add_argument("-includeMatchedChunksText", "--includeMatchedChunksText", action="store_true", required=False, default=False, help="If passed - matched chunks text content will be included in the search result.")
+
+ap.add_argument("-format", "--format", default="json_with_indent", required=False, choices=['json', 'json_with_indent', 'toon'], help="Output format for the search result (e.g., 'json', 'json_with_indent', 'toon')")
 args = vars(ap.parse_args())
 
 searcher = create_collection_searcher(collection_name=args['collection'], index_names=args['indexes'], filter=args['filter'], rrf_k=args['rrfK'])
@@ -36,4 +38,4 @@ search_result = log_execution_duration(lambda: searcher.search(args['query'],
                                                                include_all_chunks_content=args['includeAllChunksText']),
                                        identifier=f"Searching collection: \"{args['collection']}\" by query: \"{args['query']}\"")
 
-logging.info(f"Search results:\n{json.dumps(search_result, indent=2, ensure_ascii=False)}")
+logging.info(f"Search results:\n{format_object(search_result, args['format'])}")

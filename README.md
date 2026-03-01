@@ -40,8 +40,9 @@ More context: [Medium article](https://medium.com/@shnax0210/mcp-tool-for-vector
 
 ## Updates
 
-### 2026/02/24 - support of more wide list of embedding models
-Aded ability to use any embedding model form next [list](https://huggingface.co/models?pipeline_tag=sentence-similarity&library=sentence-transformers&sort=trending). Check [How it works](#how-it-works) section for details.
+### 2026/02/24 - More embedding models, TOON format for MCP
+- Aded ability to use any embedding model form next [list](https://huggingface.co/models?pipeline_tag=sentence-similarity&library=sentence-transformers&sort=trending). Check [How it works](#how-it-works) section for details.
+- MCP now supports [TOON](https://github.com/toon-format/toon) format for MCP. 
 
 ### 2026/02/24 — Faster Chroma deserialization (interface preserved)
 - New Chroma index payload format stores/restores the underlying Chroma storage directly, avoiding full Python-level embeddings replay during load and end up with significant performance gain (x2-x20 depends from a case);

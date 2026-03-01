@@ -34,7 +34,7 @@ class DocumentCollectionSearcher:
 
         return {
             "collectionName": self.collection_name,
-            "indexerName": ", ".join(indexer.get_name() for indexer in self.__indexers),
+            "indexerNames": ", ".join(indexer.get_name() for indexer in self.__indexers),
             "results": results,
         }
 
