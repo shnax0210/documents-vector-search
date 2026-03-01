@@ -3,7 +3,10 @@
 - [Overview](#overview)
 - [Updates](#updates)
 - [How it works](#how-it-works)
+  - [Collection structure](#collection-structure)
+  - [Indexers configuration](#indexers-configuration)
 - [Setup](#setup)
+  - [Authentication](#authentication)
   - [Create collection for Confluence](#create-collection-for-confluence)
   - [Create collection for Jira](#create-collection-for-jira)
   - [Create collection for local files](#create-collection-for-local-files)
@@ -11,7 +14,6 @@
   - [Search](#search)
     - [Filtering by metafields](#filtering-by-metafields)
   - [Set up MCP](#set-up-mcp)
-- [Collection structure](#collection-structure)
 - [Good to know](#good-to-know)
 
 ## Overview
@@ -25,6 +27,7 @@ Index documents from Jira, Confluence, or local files into a local vector databa
 - Hybrid search: vector search + BM25 keyword search, merged by Reciprocal Rank Fusion
 - Incremental updates: no need to rebuild the full index each time
 - Filter results by metafields (space, project, date, etc.)
+- Ability to extend: add more data sources, search engines, embeddings, etc.
 
 **Technologies:** [ChromaDB](https://github.com/chroma-core/chroma), [FAISS](https://github.com/facebookresearch/faiss), SQLite (BM25), [sentence-transformers](https://pypi.org/project/sentence-transformers/), [Unstructured](https://github.com/Unstructured-IO/unstructured), [LangChain](https://python.langchain.com/docs/introduction/)
 
@@ -36,6 +39,9 @@ More context: [Medium article](https://medium.com/@shnax0210/mcp-tool-for-vector
 - Want to chat? [LinkedIn](https://www.linkedin.com/in/oleksii-shnepov-841447158/)
 
 ## Updates
+
+### 2026/02/24 - support of more wide list of embedding models
+Aded ability to use any embedding model form next [list](https://huggingface.co/models?pipeline_tag=sentence-similarity&library=sentence-transformers&sort=trending). Check [How it works](#how-it-works) section for details.
 
 ### 2026/02/24 — Faster Chroma deserialization (interface preserved)
 - New Chroma index payload format stores/restores the underlying Chroma storage directly, avoiding full Python-level embeddings replay during load and end up with significant performance gain (x2-x20 depends from a case);
@@ -68,6 +74,28 @@ flowchart TD
 2. **Update** — re-index only new or changed documents (much faster than full creation)
 3. **Search** — find documents by text query via CLI
 4. **MCP** — expose search as a tool for AI agents
+
+### Collection structure
+
+```mermaid
+graph TD
+    A["./data/collections/${name}/"] --> B["documents/"]
+    A --> C["indexes/"]
+    A --> D["manifest.json"]
+    B --- B1["Loaded and converted documents"]
+    C --- C1["Vector and keyword index files"]
+    D --- D1["Collection metadata: name, last update time, reader config, index list"]
+```
+
+See `./main/core/documents_collection_creator.py` for creation/update details and `./main/core/documents_collection_searcher.py` for search details.
+
+### Indexers configuration
+
+When you create a collection, you can specify a list of `indexers` like: `--indexers "indexer_ChromaDb__embeddings_sentence-transformers_slash_all-MiniLM-L6-v2", "indexer_SqlLiteBM25"`. The indexers define what vector/keyword databases and embedding models are used. Database and embedding model are separated by `__`. For example:
+- `indexer_ChromaDb__embeddings_sentence-transformers_slash_all-MiniLM-L6-v2` means that `ChromaDb` is used as vector database and [`sentence-transformers/all-MiniLM-L6-v2`](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2) is used as the embedding model. You can use any embedding model from next [list](https://huggingface.co/models?pipeline_tag=sentence-similarity&library=sentence-transformers&sort=trending), you only needs to add prefix `embeddings_` and replace slash symbols with `_slash_`. For example, if you want to use ChromaDb with [BAAI/bge-m3](https://huggingface.co/BAAI/bge-m3) embedder model, indexer name shoud be: `indexer_ChromaDb__embeddings_BAAI_slash_bge-m3`;
+- `indexer_SqlLiteBM25` means that SqlLite BM25 is used as search engine.
+
+You can define as many indexers as you want, their search results will be combined by Reciprocal Rank Fusion.
 
 ## Setup
 
@@ -222,20 +250,6 @@ Add to your MCP config (e.g., `.vscode/mcp.json` for VS Code + GitHub Copilot):
 **Prompt examples:**
 - "Find info about AI use cases, search on Confluence, include all used links"
 - "Find info about PDP carousel, search on Jira, include all used links"
-
-## Collection structure
-
-```mermaid
-graph TD
-    A["./data/collections/${name}/"] --> B["documents/"]
-    A --> C["indexes/"]
-    A --> D["manifest.json"]
-    B --- B1["Loaded and converted documents"]
-    C --- C1["Vector and keyword index files"]
-    D --- D1["Collection metadata: name, last update time, reader config, index list"]
-```
-
-See `./main/core/documents_collection_creator.py` for creation/update details and `./main/core/documents_collection_searcher.py` for search details.
 
 ## Good to know
 

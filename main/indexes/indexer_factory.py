@@ -27,6 +27,16 @@ def __split_indexer_name(indexer_name):
     raise ValueError(f"Invalid indexer name format: {indexer_name}")
 
 def __create_sentence_embedder(embedding_model):
+    # Check for old name formats for backward compatibility
+    model = __create_sentence_embedder_by_old_embedding_model_name(embedding_model)
+    if model is not None:
+        return model
+
+    # New format allows any model name, but it should start with "embeddings_" and replace "/" with "_slash_"
+    parsed_model_name = embedding_model.replace("embeddings_", "").replace("_slash_", "/")
+    return SentenceEmbedder(model_name=parsed_model_name)
+
+def __create_sentence_embedder_by_old_embedding_model_name(embedding_model):
     if embedding_model == "embeddings_all-MiniLM-L6-v2":
         return SentenceEmbedder(model_name="sentence-transformers/all-MiniLM-L6-v2")
     
@@ -38,8 +48,8 @@ def __create_sentence_embedder(embedding_model):
 
     if embedding_model == "embeddings_bge-m3":
         return SentenceEmbedder(model_name="BAAI/bge-m3")
-
-    raise ValueError(f"Unknown embedding model: {embedding_model}")
+    
+    return None
 
 def create_indexer(indexer_name):
     indexer_type, embedding_model = __split_indexer_name(indexer_name)

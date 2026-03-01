@@ -15,11 +15,10 @@ ap = argparse.ArgumentParser()
 ap.add_argument("-collection", "--collection", required=True, help="Collection name (will be used as root folder name)")
 
 ap.add_argument("-url", "--url", required=True, help="Jira base url (Cloud: https://your-domain.atlassian.net, Server/Data Center: https://jira.example.com)")
-ap.add_argument("-jql", "--jql", required=False, default="",
-                
-                 help="Jira query (JQL) to get tickets for indexing")
+ap.add_argument("-jql", "--jql", required=False, default="", help="Jira query (JQL) to get tickets for indexing")
 
-ap.add_argument("-indexers", "--indexers", required=False, default=["indexer_ChromaDb__embeddings_all-MiniLM-L6-v2", "indexer_SqlLiteBM25"], help="list on indexer names", nargs='+')
+ap.add_argument("-indexers", "--indexers", required=False, default=["indexer_ChromaDb__embeddings_sentence-transformers_slash_all-MiniLM-L6-v2", "indexer_SqlLiteBM25"], help="list on indexer names", nargs='+')
+
 ap.add_argument("-chunkSize", "--chunkSize", required=False, default=1000, type=int, help="Chunk size for text splitting (default: 1000)")
 ap.add_argument("-chunkOverlap", "--chunkOverlap", required=False, default=100, type=int, help="Chunk overlap for text splitting (default: 100)")
 args = vars(ap.parse_args())
