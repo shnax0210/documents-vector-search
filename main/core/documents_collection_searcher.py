@@ -33,8 +33,8 @@ class DocumentCollectionSearcher:
             results = results[:max_number_of_documents]
 
         return {
-            "collectionName": self.collection_name,
-            "indexerNames": ", ".join(indexer.get_name() for indexer in self.__indexers),
+            "collection": self.collection_name,
+            "indexers": [indexer.get_name() for indexer in self.__indexers],
             "results": results,
         }
 
@@ -94,7 +94,15 @@ class DocumentCollectionSearcher:
         return {
             "chunkNumber": mapping["chunkNumber"],
             "score":  float(scores[0][result_number]),
-            **({ "content": self.__get_document(mapping["documentPath"])["chunks"][mapping["chunkNumber"]] } if include_matched_chunks_content else {})
+            **(self.__build_chunk_content(mapping) if include_matched_chunks_content else {})
+        }
+
+    def __build_chunk_content(self, mapping):
+        chunk = self.__get_document(mapping["documentPath"])["chunks"][mapping["chunkNumber"]]
+
+        return { 
+            "content": chunk["indexedData"],
+            **(chunk["metadata"] if "metadata" in chunk else {})
         }
 
     def __get_document(self, documentPath):
