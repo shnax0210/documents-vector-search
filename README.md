@@ -41,6 +41,10 @@ More context: [Medium article](https://medium.com/@shnax0210/mcp-tool-for-vector
 
 ## Updates
 
+### 2026/03/26 — ChromaDB collection folder storage improvment
+- Updated ChromaDB indexer to avoid temp folder usage in runtime and store data in native ChromaDB format directly in collection folder without any transformation. It also improves performace.
+- Existing collections will be automatically migrated to the new format durign first usage.
+
 ### 2026/02/24 - More embedding models, TOON format for MCP, fetch document script and tool, subfolders metadata
 - Ability to use any embedding model form next [list](https://huggingface.co/models?pipeline_tag=sentence-similarity&library=sentence-transformers&sort=trending). Check [How it works](#how-it-works) section for details;
 - MCP now supports [TOON](https://github.com/toon-format/toon) format for MCP;
@@ -283,6 +287,14 @@ Add to your MCP config (e.g., `.vscode/mcp.json` for VS Code + GitHub Copilot):
 **Prompt examples:**
 - "Find info about AI use cases, search on Confluence, include all used links"
 - "Find info about PDP carousel, search on Jira, include all used links"
+
+### Run unit tests
+
+If you develop the tool, you can run unit tests:
+
+```
+uv run pytest
+```
 
 ## Good to know
 

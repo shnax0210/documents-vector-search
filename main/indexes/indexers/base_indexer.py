@@ -24,3 +24,6 @@ class BaseIndexer(ABC):
 
     @abstractmethod
     def support_metadata(self) -> bool: ...
+
+    def is_persistent_storage(self) -> bool:
+        return False
