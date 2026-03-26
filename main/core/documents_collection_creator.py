@@ -181,7 +181,8 @@ class DocumentCollectionCreator:
                 indexer.index_texts(index_item_ids, items_to_index, items_metadata=items_metadata)
 
         for indexer in self.document_indexers:
-            self.persister.save_bin_file(indexer.serialize(), f"{self.__build_index_base_path(indexer)}/indexer")
+            if not indexer.is_persistent_storage():
+                self.persister.save_bin_file(indexer.serialize(), f"{self.__build_index_base_path(indexer)}/indexer")
 
         index_info = { "lastIndexItemId": last_index_item_id, }
         self.__save_json_file(index_info, self.__build_index_info_path())

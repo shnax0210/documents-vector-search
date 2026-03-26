@@ -63,6 +63,9 @@ class DiskPersister(BasePersister):
                 files.append(os.path.relpath(os.path.join(root, filename), path))
         return files
 
+    def get_absolute_path(self, relative_path):
+        return os.path.abspath(os.path.join(self.base_path, relative_path))
+
     def __make_sure_path_exists(self, path):
         directory_path = os.path.dirname(path)
 

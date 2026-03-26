@@ -7,3 +7,8 @@ data
 .vscode
 .continue
 .dccache
+
+.specify/
+specs/
+/.github/prompts/speckit.*.md
+/.github/agents/speckit.*.md

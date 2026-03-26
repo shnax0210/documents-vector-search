@@ -15,3 +15,8 @@ dependencies = [
     "unstructured[all-docs]>=0.18.24",
     "toons>=0.5.3",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest",
+]

@@ -1,8 +1,6 @@
 import chromadb
 from chromadb.config import Settings
 import numpy as np
-import tempfile
-import shutil
 import os
 import pickle
 import io
@@ -10,7 +8,7 @@ import tarfile
 from typing import List, Tuple, Optional
 from datetime import datetime
 
-from main.indexes.filter_parser import parse_filter, FilterNode, FilterCondition, FilterGroup
+from main.indexes.filter_parser import parse_filter, FilterNode, FilterCondition
 from main.indexes.indexers.base_indexer import BaseIndexer
 from main.indexes.embeddings.base_embedder import BaseEmbedder
 
@@ -18,36 +16,21 @@ from main.indexes.embeddings.base_embedder import BaseEmbedder
 class ChromaIndexer(BaseIndexer):
     __SERIALIZED_ARCHIVE_MAGIC = b"CHROMA_ARCHIVE_V1\0"
 
-    def __init__(self, name: str, embedder: BaseEmbedder, serialized_data: Optional[bytes] = None):
+    def __init__(self, name: str, embedder: BaseEmbedder, storage_path: str, serialized_data: Optional[bytes] = None):
         self.name = name
         self.embedder = embedder
-        
-        self.__temp_dir = tempfile.mkdtemp()
+        self.__storage_path = storage_path
+        self.__client = None
+        self.__collection = None
 
-        serialized_as_archive = serialized_data is not None and self.__is_storage_archive(serialized_data)
-        if serialized_as_archive:
-            self.__restore_storage_from_archive(serialized_data)
-
-        self.__client = chromadb.PersistentClient(
-            path=self.__temp_dir,
-            settings=Settings(anonymized_telemetry=False),
-        )
-
-        self.__collection = self.__client.get_or_create_collection(
-            name="documents",
-            metadata={"hnsw:space": "l2"}
-        )
-        
-        if serialized_data is not None and not serialized_as_archive:
-            collection_data = pickle.loads(serialized_data)
-            self.__add_in_batches(
-                ids=collection_data["ids"],
-                embeddings=collection_data["embeddings"],
-                metadatas=collection_data["metadatas"]
-            )
+        if serialized_data is not None:
+            self.__migrate_legacy_data(serialized_data)
 
     def get_name(self) -> str:
         return self.name
+
+    def is_persistent_storage(self) -> bool:
+        return True
 
     def index_texts(self, ids: np.ndarray, texts: List[str], items_metadata: list[dict] = None) -> None:
         embeddings = self.embedder.embed(texts)
@@ -61,7 +44,7 @@ class ChromaIndexer(BaseIndexer):
 
     def remove_ids(self, ids: np.ndarray) -> None:
         str_ids = [str(int(id_val)) for id_val in ids]
-        self.__collection.delete(ids=str_ids)
+        self.__get_collection().delete(ids=str_ids)
 
     def serialize(self) -> bytes:
         return self.__serialize_storage_to_archive()
@@ -75,7 +58,7 @@ class ChromaIndexer(BaseIndexer):
         
         filter_expression = parse_filter(filter)
 
-        results = self.__collection.query(
+        results = self.__get_collection().query(
             query_embeddings=[query_embedding.tolist()],
             n_results=min(number_of_results, collection_size),
             where=self.__convert_filter_to_chroma(filter_expression)
@@ -90,7 +73,7 @@ class ChromaIndexer(BaseIndexer):
         return distances, ids
     
     def get_size(self) -> int:
-        return self.__collection.count()
+        return self.__get_collection().count()
     
     def support_metadata(self) -> bool:
         return True
@@ -155,11 +138,23 @@ class ChromaIndexer(BaseIndexer):
         total_items = len(ids)
         for i in range(0, total_items, batch_size):
             end_idx = min(i + batch_size, total_items)
-            self.__collection.add(
+            self.__get_collection().add(
                 ids=ids[i:end_idx],
                 embeddings=embeddings[i:end_idx],
                 metadatas=metadatas[i:end_idx]
             )
+
+    def __get_collection(self):
+        if self.__collection is None:
+            self.__client = chromadb.PersistentClient(
+                path=self.__storage_path,
+                settings=Settings(anonymized_telemetry=False),
+            )
+            self.__collection = self.__client.get_or_create_collection(
+                name="documents",
+                metadata={"hnsw:space": "l2"}
+            )
+        return self.__collection
 
     def __is_storage_archive(self, serialized_data: bytes) -> bool:
         return serialized_data.startswith(self.__SERIALIZED_ARCHIVE_MAGIC)
@@ -167,29 +162,43 @@ class ChromaIndexer(BaseIndexer):
     def __serialize_storage_to_archive(self) -> bytes:
         archive_buffer = io.BytesIO()
         with tarfile.open(fileobj=archive_buffer, mode="w:gz") as tar:
-            for root, _, files in os.walk(self.__temp_dir):
+            for root, _, files in os.walk(self.__storage_path):
                 for file_name in files:
                     file_path = os.path.join(root, file_name)
-                    archive_path = os.path.relpath(file_path, self.__temp_dir)
+                    archive_path = os.path.relpath(file_path, self.__storage_path)
                     tar.add(file_path, arcname=archive_path, recursive=False)
 
         return self.__SERIALIZED_ARCHIVE_MAGIC + archive_buffer.getvalue()
 
-    def __restore_storage_from_archive(self, serialized_data: bytes):
-        archive_payload = serialized_data[len(self.__SERIALIZED_ARCHIVE_MAGIC):]
-        with tarfile.open(fileobj=io.BytesIO(archive_payload), mode="r:gz") as tar:
-            self.__extract_archive_safely(tar)
+    def __migrate_legacy_data(self, serialized_data: bytes):
+        os.makedirs(self.__storage_path, exist_ok=True)
+
+        if self.__is_storage_archive(serialized_data):
+            archive_payload = serialized_data[len(self.__SERIALIZED_ARCHIVE_MAGIC):]
+            with tarfile.open(fileobj=io.BytesIO(archive_payload), mode="r:gz") as tar:
+                self.__extract_archive_safely(tar)
+        else:
+            collection_data = pickle.loads(serialized_data)
+            self.__client = chromadb.PersistentClient(
+                path=self.__storage_path,
+                settings=Settings(anonymized_telemetry=False),
+            )
+            self.__collection = self.__client.get_or_create_collection(
+                name="documents",
+                metadata={"hnsw:space": "l2"}
+            )
+            self.__add_in_batches(
+                ids=collection_data["ids"],
+                embeddings=collection_data["embeddings"],
+                metadatas=collection_data["metadatas"]
+            )
 
     def __extract_archive_safely(self, tar: tarfile.TarFile):
-        target_root = os.path.abspath(self.__temp_dir)
+        target_root = os.path.abspath(self.__storage_path)
 
         for member in tar.getmembers():
             member_target = os.path.abspath(os.path.join(target_root, member.name))
             if not member_target.startswith(target_root + os.sep):
                 raise ValueError("Invalid archive entry path")
 
-        tar.extractall(path=target_root)
-    
-    def __del__(self):
-        if os.path.exists(self.__temp_dir):
-            shutil.rmtree(self.__temp_dir)
+        tar.extractall(path=target_root, filter="data")

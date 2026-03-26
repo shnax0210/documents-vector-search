@@ -1,4 +1,5 @@
 import json
+import os
 from typing import List, Optional
 from .indexers.base_indexer import BaseIndexer
 from .indexers.faiss_indexer import FaissIndexer
@@ -54,19 +55,23 @@ def __create_sentence_embedder_by_old_embedding_model_name(embedding_model):
     
     return None
 
-def create_indexer(indexer_name) -> BaseIndexer:
+def create_indexer(indexer_name, collection_name=None, persister=None) -> BaseIndexer:
     indexer_type, embedding_model = __split_indexer_name(indexer_name)
 
     if indexer_type == "indexer_FAISS_IndexFlatL2":
         return FaissIndexer(indexer_name, __create_sentence_embedder(embedding_model))
     
     if indexer_type == "indexer_ChromaDb":
-        return ChromaIndexer(indexer_name, __create_sentence_embedder(embedding_model))
+        storage_path = __build_storage_path(indexer_name, collection_name, persister)
+        return ChromaIndexer(indexer_name, __create_sentence_embedder(embedding_model), storage_path)
 
     if indexer_type == "indexer_SqlLiteBM25":
         return SqlliteIndexer(indexer_name)
 
     raise ValueError(f"Unknown indexer name: {indexer_name}")
+
+def __build_storage_path(indexer_name, collection_name, persister):
+    return persister.get_absolute_path(f"{collection_name}/indexes/{indexer_name}/storage")
 
 def load_indexers(index_names, collection_name, persister) -> List[BaseIndexer]:
     if index_names is None:
@@ -95,8 +100,14 @@ def load_indexer(indexer_name, collection_name, persister) -> BaseIndexer:
         return FaissIndexer(indexer_name, __create_sentence_embedder(embedding_model), serialized_index)
     
     if indexer_type == "indexer_ChromaDb":
+        storage_path = __build_storage_path(indexer_name, collection_name, persister)
+        storage_dir_exists = os.path.isdir(storage_path)
+
+        if storage_dir_exists:
+            return ChromaIndexer(indexer_name, __create_sentence_embedder(embedding_model), storage_path)
+
         serialized_data = persister.read_bin_file(f"{collection_name}/indexes/{indexer_name}/indexer")
-        return ChromaIndexer(indexer_name, __create_sentence_embedder(embedding_model), serialized_data)
+        return ChromaIndexer(indexer_name, __create_sentence_embedder(embedding_model), storage_path, serialized_data)
 
     if indexer_type == "indexer_SqlLiteBM25":
         serialized_data = persister.read_bin_file(f"{collection_name}/indexes/{indexer_name}/indexer")

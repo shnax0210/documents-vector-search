@@ -19,9 +19,9 @@ def __create_collection_creator(collection_name, indexers, document_reader, docu
     else:
         result_document_reader = document_reader
 
-    document_indexers = [create_indexer(indexer_name) for indexer_name in indexers]
-
     disk_persister = DiskPersister(base_path="./data/collections")
+
+    document_indexers = [create_indexer(indexer_name, collection_name=collection_name, persister=disk_persister) for indexer_name in indexers]
 
     return DocumentCollectionCreator(collection_name=collection_name, 
                                      document_reader=result_document_reader, 
