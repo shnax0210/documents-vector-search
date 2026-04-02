@@ -21,7 +21,7 @@ ap.add_argument("-rrfK", "--rrfK", required=False, type=int, default=60, help="R
 
 ap.add_argument("-filter", "--filter", required=False, default=None, help="""Filter query for search. Uses common syntax: 'field operator "value"'. Multiple conditions can be combined with 'and'/'or'. Examples: --filter 'space = "SPACE_KEY"', --filter 'space = "SPACE_KEY" and lastModifiedAt > "2026-01-01"'""")
 
-ap.add_argument("-maxNumberOfChunks", "--maxNumberOfChunks", required=False, type=int, default=100, help="Max number of text chunks in result")
+ap.add_argument("-maxNumberOfChunks", "--maxNumberOfChunks", required=False, type=int, default=50, help="Max number of text chunks in result")
 ap.add_argument("-maxNumberOfDocuments", "--maxNumberOfDocuments", required=False, type=int, default=None, help="Max number of documents in result")
 
 ap.add_argument("-includeFullText", "--includeFullText", action="store_true", required=False, default=False, help="If passed - full text content will be included in the search result. By default only matched chunks content is included. If passed, it's better to reduce --maxNumberOfChunks or set small --maxNumberOfDocuments like 10-30 to avoid too big response and breaking AI agent.")
@@ -46,25 +46,20 @@ def search_documents(query: str) -> str:
     return format_object(search_results, args['format'])
 
 
-fetch_tool_description = """The tool allows fetching a full document from the collection by its id or url.
+fetch_tool_description = """The tool allows fetching a full document from the collection by its id.
 Use startLine and endLine to read a specific portion of the document. If document is too large, fetch it in parts.
 
-For Confluence:
-- `id` is the page id;
-- `url` is the page url.
+`id` means:
+- For Confluence: page id.
+- For Jira: issue key (e.g. PROJ-123).
+- For files collection: relative path.
 
-For Jira:
-- `id` is the issue key (e.g. PROJ-123);
-- `url` is the issue url.
-
-For files collection:
-- `id` is the relative path;
-- `url` is the absolute path with 'file://' prefix of the file on the file system.
+Users often provides url to the document, extract id from the url and use it to fetch the document in the case.
 """
 
 @mcp.tool(name=f"fetch_from_{args['collection']}", description=fetch_tool_description)
-def fetch_document(id: str = None, url: str = None, startLine: int = 1, endLine: int = 250) -> str:
-    result = fetcher.fetch(id=id, url=url, start_line=startLine, end_line=endLine)
+def fetch_document(id: str, startLine: int = 1, endLine: int = 250) -> str:
+    result = fetcher.fetch(id=id, start_line=startLine, end_line=endLine)
     return format_object(result, args['format'])
 
 if __name__ == "__main__":
