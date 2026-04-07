@@ -3,7 +3,6 @@
 ## 2026/04/07
 - Improved Jira incremental indexing:
 	- Collection updates now use precise Jira watermark query (`updated >= "YYYY/MM/DD HH:mm"`) with a short overlap window by default;
-	- Removed `--smartIndexing` option because precise timestamp-based updates are now always enabled for Jira.
 
 ## 2026/04/02
 - Removed ability to fetch document by url, since it causes issues when user provides an url that a bit different from the one in a collection;
