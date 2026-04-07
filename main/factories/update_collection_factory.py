@@ -54,6 +54,12 @@ def __calculate_update_time(manifest):
 def __calculate_update_date(manifest):
     return __calculate_update_time(manifest).date()
 
+def __build_jira_update_query_addition(manifest):
+    # Subtract a short overlap window to avoid missing updates around clock drift.
+    watermark = __calculate_exact_update_time(manifest) - timedelta(minutes=5)
+    watermark_jql = watermark.strftime("%Y/%m/%d %H:%M")
+    return f'AND updated >= "{watermark_jql}"'
+
 def __create_reader_and_converter(manifest):
     if manifest['reader']['type'] == 'jira':
         return __create_jira_reader_and_converter(manifest)
@@ -90,8 +96,7 @@ def __create_jira_reader_and_converter(manifest):
     login = os.environ.get('JIRA_LOGIN')
     password = os.environ.get('JIRA_PASSWORD')
 
-    update_date = __calculate_update_date(manifest).isoformat()
-    query_addition = f'AND (created >= "{update_date}" OR updated >= "{update_date}")'
+    query_addition = __build_jira_update_query_addition(manifest)
 
     reader = JiraDocumentReader(base_url=manifest['reader']['baseUrl'], 
                                     query=f"{manifest['reader']['query']} {query_addition}",
@@ -109,8 +114,7 @@ def __create_jira_cloud_reader_and_converter(manifest):
     if not email or not api_token:
         raise ValueError("Both 'ATLASSIAN_EMAIL' and 'ATLASSIAN_TOKEN' environment variables must be provided for Jira Cloud.")
 
-    update_date = __calculate_update_date(manifest).isoformat()
-    query_addition = f'AND (created >= "{update_date}" OR updated >= "{update_date}")'
+    query_addition = __build_jira_update_query_addition(manifest)
 
     reader = JiraCloudDocumentReader(base_url=manifest['reader']['baseUrl'], 
                                     query=f"{manifest['reader']['query']} {query_addition}",

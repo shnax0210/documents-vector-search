@@ -146,6 +146,8 @@ uv run files_collection_create_cmd_adapter.py --basePath "${pathToFolder}"
 
 Only re-indexes new or changed documents.
 
+For Jira collections, updates use a precise `updated >= "YYYY/MM/DD HH:mm"` watermark with a short overlap window. This significantly reduces unnecessary reindexing compared to date-only queries.
+
 ```bash
 uv run collection_update_cmd_adapter.py --collection "${collectionName}"
 ```
