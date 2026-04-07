@@ -125,13 +125,11 @@ uv run confluence_collection_create_cmd_adapter.py \
 uv run jira_collection_create_cmd_adapter.py \
   --collection "jira" \
   --url "${baseJiraUrl}" \
-  --jql "${jiraQuery}" \
-  --smartIndexing true
+  --jql "${jiraQuery}"
 ```
 
 - `--url` — Jira base URL (e.g., `https://jira.example.com` or `https://your-domain.atlassian.net`)
 - `--jql` — Jira query, e.g., `"project = MyProject AND created >= -183d"`
-- `--smartIndexing` — enables precise timestamp-based incremental updates for Jira collections (default: `true`)
 
 ### Create collection for local files
 
@@ -148,7 +146,7 @@ uv run files_collection_create_cmd_adapter.py --basePath "${pathToFolder}"
 
 Only re-indexes new or changed documents.
 
-For Jira collections created with `--smartIndexing true`, updates use a precise `updated >= "YYYY/MM/DD HH:mm"` watermark with a short overlap window. This significantly reduces unnecessary reindexing compared to date-only queries.
+For Jira collections, updates use a precise `updated >= "YYYY/MM/DD HH:mm"` watermark with a short overlap window. This significantly reduces unnecessary reindexing compared to date-only queries.
 
 ```bash
 uv run collection_update_cmd_adapter.py --collection "${collectionName}"

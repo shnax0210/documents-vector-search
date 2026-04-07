@@ -54,16 +54,7 @@ def __calculate_update_time(manifest):
 def __calculate_update_date(manifest):
     return __calculate_update_time(manifest).date()
 
-
-def __is_smart_jira_indexing_enabled(manifest):
-    return manifest.get("reader", {}).get("smartIndexing", False)
-
-
 def __build_jira_update_query_addition(manifest):
-    if not __is_smart_jira_indexing_enabled(manifest):
-        update_date = __calculate_update_date(manifest).isoformat()
-        return f'AND (created >= "{update_date}" OR updated >= "{update_date}")'
-
     # Subtract a short overlap window to avoid missing updates around clock drift.
     watermark = __calculate_exact_update_time(manifest) - timedelta(minutes=5)
     watermark_jql = watermark.strftime("%Y/%m/%d %H:%M")
@@ -112,8 +103,7 @@ def __create_jira_reader_and_converter(manifest):
                                     token=token,
                                     login=login, 
                                     password=password, 
-                                    batch_size=manifest['reader']['batchSize'],
-                                    smart_indexing=manifest['reader'].get('smartIndexing', False))
+                                    batch_size=manifest['reader']['batchSize'])
     converter = JiraDocumentConverter(__create_text_splitter(manifest))
     return reader,converter
 
@@ -130,8 +120,7 @@ def __create_jira_cloud_reader_and_converter(manifest):
                                     query=f"{manifest['reader']['query']} {query_addition}",
                                     email=email,
                                     api_token=api_token, 
-                                    batch_size=manifest['reader']['batchSize'],
-                                    smart_indexing=manifest['reader'].get('smartIndexing', False))
+                                    batch_size=manifest['reader']['batchSize'])
     converter = JiraCloudDocumentConverter(__create_text_splitter(manifest))
     return reader,converter
 
