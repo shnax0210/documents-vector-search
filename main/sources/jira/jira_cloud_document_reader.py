@@ -15,7 +15,8 @@ class JiraCloudDocumentReader(BaseDocumentReader):
                  number_of_retries=3,
                  retry_delay=1,
                  max_skipped_items_in_row=5,
-                 timeout=60):
+                 timeout=60,
+                 smart_indexing=False):
         # "email" and "api_token" must be provided for Cloud
         if not email or not api_token:
             raise ValueError("Both 'email' and 'api_token' must be provided for Jira Cloud.")
@@ -33,6 +34,7 @@ class JiraCloudDocumentReader(BaseDocumentReader):
         self.retry_delay = retry_delay
         self.max_skipped_items_in_row = max_skipped_items_in_row
         self.timeout = timeout
+        self.smart_indexing = smart_indexing
         self.fields = "summary,description,comment,created,updated,epic,parent,status,priority,assignee,reporter,issuetype"
 
     def read_all_documents(self) -> Generator:
@@ -57,6 +59,7 @@ class JiraCloudDocumentReader(BaseDocumentReader):
             "query": self.query,
             "batchSize": self.batch_size,
             "fields": self.fields,
+            "smartIndexing": self.smart_indexing,
         }
 
     def __add_url_prefix(self, relative_path):

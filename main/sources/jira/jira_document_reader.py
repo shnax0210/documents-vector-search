@@ -16,7 +16,8 @@ class JiraDocumentReader(BaseDocumentReader):
                  number_of_retries=3,
                  retry_delay=1,
                  max_skipped_items_in_row=5,
-                 timeout=60):
+                 timeout=60,
+                 smart_indexing=False):
         # "token" or "login" and "password" must be provided
         if not token and (not login or not password):
             raise ValueError("Either 'token' or both 'login' and 'password' must be provided.")
@@ -31,6 +32,7 @@ class JiraDocumentReader(BaseDocumentReader):
         self.retry_delay = retry_delay
         self.max_skipped_items_in_row = max_skipped_items_in_row
         self.timeout = timeout
+        self.smart_indexing = smart_indexing
         self.fields = "summary,description,comment,created,updated,epic,parent,status,priority,assignee,reporter,issuetype"
 
     def read_all_documents(self) -> Generator:
@@ -52,6 +54,7 @@ class JiraDocumentReader(BaseDocumentReader):
             "query": self.query,
             "batchSize": self.batch_size,
             "fields": self.fields,
+            "smartIndexing": self.smart_indexing,
         }
 
     def __add_url_prefix(self, relative_path):

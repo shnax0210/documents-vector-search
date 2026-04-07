@@ -11,6 +11,15 @@ from main.splitter.text_splitter import TextSplitter
 
 setup_root_logger()
 
+
+def __parse_bool(value: str) -> bool:
+    lowered = value.strip().lower()
+    if lowered in {"1", "true", "yes", "y", "on"}:
+        return True
+    if lowered in {"0", "false", "no", "n", "off"}:
+        return False
+    raise argparse.ArgumentTypeError(f"Invalid boolean value: {value}")
+
 ap = argparse.ArgumentParser()
 ap.add_argument("-collection", "--collection", required=True, help="Collection name (will be used as root folder name)")
 
@@ -21,6 +30,7 @@ ap.add_argument("-indexers", "--indexers", required=False, default=["indexer_Chr
 
 ap.add_argument("-chunkSize", "--chunkSize", required=False, default=1000, type=int, help="Chunk size for text splitting (default: 1000)")
 ap.add_argument("-chunkOverlap", "--chunkOverlap", required=False, default=100, type=int, help="Chunk overlap for text splitting (default: 100)")
+ap.add_argument("-smartIndexing", "--smartIndexing", required=False, default=True, type=__parse_bool, help="Use precise timestamp-based Jira updates (default: true)")
 args = vars(ap.parse_args())
 
 text_splitter = TextSplitter(chunk_size=args['chunkSize'], chunk_overlap=args['chunkOverlap'])
@@ -39,7 +49,8 @@ if is_cloud:
     jira_document_reader = JiraCloudDocumentReader(base_url=args['url'],
                                                    query=args['jql'],
                                                    email=email,
-                                                   api_token=api_token)
+                                                   api_token=api_token,
+                                                   smart_indexing=args['smartIndexing'])
     
     jira_document_converter = JiraCloudDocumentConverter(text_splitter)
     
@@ -56,7 +67,8 @@ else:
                                               query=args['jql'],
                                               token=token,
                                               login=login, 
-                                              password=password)
+                                              password=password,
+                                              smart_indexing=args['smartIndexing'])
     
     jira_document_converter = JiraDocumentConverter(text_splitter)
 

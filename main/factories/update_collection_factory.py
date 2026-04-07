@@ -54,6 +54,21 @@ def __calculate_update_time(manifest):
 def __calculate_update_date(manifest):
     return __calculate_update_time(manifest).date()
 
+
+def __is_smart_jira_indexing_enabled(manifest):
+    return manifest.get("reader", {}).get("smartIndexing", False)
+
+
+def __build_jira_update_query_addition(manifest):
+    if not __is_smart_jira_indexing_enabled(manifest):
+        update_date = __calculate_update_date(manifest).isoformat()
+        return f'AND (created >= "{update_date}" OR updated >= "{update_date}")'
+
+    # Subtract a short overlap window to avoid missing updates around clock drift.
+    watermark = __calculate_exact_update_time(manifest) - timedelta(minutes=5)
+    watermark_jql = watermark.strftime("%Y/%m/%d %H:%M")
+    return f'AND updated >= "{watermark_jql}"'
+
 def __create_reader_and_converter(manifest):
     if manifest['reader']['type'] == 'jira':
         return __create_jira_reader_and_converter(manifest)
@@ -90,15 +105,15 @@ def __create_jira_reader_and_converter(manifest):
     login = os.environ.get('JIRA_LOGIN')
     password = os.environ.get('JIRA_PASSWORD')
 
-    update_date = __calculate_update_date(manifest).isoformat()
-    query_addition = f'AND (created >= "{update_date}" OR updated >= "{update_date}")'
+    query_addition = __build_jira_update_query_addition(manifest)
 
     reader = JiraDocumentReader(base_url=manifest['reader']['baseUrl'], 
                                     query=f"{manifest['reader']['query']} {query_addition}",
                                     token=token,
                                     login=login, 
                                     password=password, 
-                                    batch_size=manifest['reader']['batchSize'])
+                                    batch_size=manifest['reader']['batchSize'],
+                                    smart_indexing=manifest['reader'].get('smartIndexing', False))
     converter = JiraDocumentConverter(__create_text_splitter(manifest))
     return reader,converter
 
@@ -109,14 +124,14 @@ def __create_jira_cloud_reader_and_converter(manifest):
     if not email or not api_token:
         raise ValueError("Both 'ATLASSIAN_EMAIL' and 'ATLASSIAN_TOKEN' environment variables must be provided for Jira Cloud.")
 
-    update_date = __calculate_update_date(manifest).isoformat()
-    query_addition = f'AND (created >= "{update_date}" OR updated >= "{update_date}")'
+    query_addition = __build_jira_update_query_addition(manifest)
 
     reader = JiraCloudDocumentReader(base_url=manifest['reader']['baseUrl'], 
                                     query=f"{manifest['reader']['query']} {query_addition}",
                                     email=email,
                                     api_token=api_token, 
-                                    batch_size=manifest['reader']['batchSize'])
+                                    batch_size=manifest['reader']['batchSize'],
+                                    smart_indexing=manifest['reader'].get('smartIndexing', False))
     converter = JiraCloudDocumentConverter(__create_text_splitter(manifest))
     return reader,converter
 
