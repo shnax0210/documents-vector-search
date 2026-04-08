@@ -3,6 +3,7 @@ import requests
 from typing import Generator
 
 from ...utils.retry import execute_with_retry
+from ...utils.requests import raise_for_status_with_details
 from main.sources.base_document_reader import BaseDocumentReader
 
 class JiraCloudDocumentReader(BaseDocumentReader):
@@ -98,8 +99,8 @@ class JiraCloudDocumentReader(BaseDocumentReader):
                 auth=(self.email, self.api_token),
                 timeout=self.timeout
             )
-            response.raise_for_status()
 
+            raise_for_status_with_details(response)
             return response.json()
 
         return execute_with_retry(do_request, f"Requesting items with nextPageToken: {next_page_token}", self.number_of_retries, self.retry_delay) 

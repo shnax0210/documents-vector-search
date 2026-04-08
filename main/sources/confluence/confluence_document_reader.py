@@ -4,6 +4,7 @@ from typing import Generator
 
 from ...utils.retry import execute_with_retry
 from ...utils.batch import read_items_in_batches
+from ...utils.requests import raise_for_status_with_details
 from main.sources.base_document_reader import BaseDocumentReader
 
 class ConfluenceDocumentReader(BaseDocumentReader):
@@ -132,7 +133,7 @@ class ConfluenceDocumentReader(BaseDocumentReader):
                                     params=params, 
                                     auth=((self.login, self.password) if self.login and self.password else None),
                                     timeout=self.timeout)
-            response.raise_for_status()
+            raise_for_status_with_details(response)
             return response.json()
 
         return execute_with_retry(do_request, f"Requesting items with params: {params}", self.number_of_retries, self.retry_delay)
