@@ -37,6 +37,7 @@ More context: [Medium article](https://medium.com/@shnax0210/mcp-tool-for-vector
 **Contacts:**
 - Like it? Please star the repo
 - Found a bug? [Open an issue](https://github.com/shnax0210/documents-vector-search/issues)
+- Want to contribute? - feel free to do it via fork and sending a pull request
 - Want to chat? [LinkedIn](https://www.linkedin.com/in/oleksii-shnepov-841447158/)
 
 ## Updates
