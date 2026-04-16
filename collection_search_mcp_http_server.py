@@ -9,6 +9,8 @@ from mcp.server.fastmcp import FastMCP
 from main.factories.fetch_collection_factory import create_collection_fetcher
 from main.factories.search_collection_factory import create_collection_searcher
 from main.utils.formatting import format_object
+import logging
+
 from main.utils.logger import setup_root_logger
 
 # Write to stderr for MCP, since in other case logs will be mixed with stdout and break communication between MCP and the tool adapter
@@ -64,11 +66,11 @@ mcp = FastMCP("documents-search-all-collections")
 
 # Debug and configure settings for host validation
 if hasattr(mcp, 'settings'):
-    print("FastMCP settings attributes:", [attr for attr in dir(mcp.settings) if not attr.startswith('__')])
+    logging.debug("FastMCP settings attributes: %s", [attr for attr in dir(mcp.settings) if not attr.startswith('__')])
     # Try to configure allow_hosts to allow connections from any host
     for attr in dir(mcp.settings):
         if 'host' in attr.lower() or 'cors' in attr.lower() or 'origin' in attr.lower():
-            print(f"Setting {attr}: {getattr(mcp.settings, attr, 'N/A')}")
+            logging.debug("Setting %s: %s", attr, getattr(mcp.settings, attr, 'N/A'))
             if attr == 'allow_hosts':
                 mcp.settings.allow_hosts = ["*"]
             elif attr == 'allowed_hosts':
@@ -138,9 +140,8 @@ def search_in_collection(
         rrfK=rrfK
     )
     
-    # Debug: Print actual call being made
-    import sys
-    print(f"DEBUG: Calling searcher.search(query={query!r}, max_number_of_chunks={maxNumberOfChunks}, ...)", file=sys.stderr)
+    # Debug: Log actual call being made
+    logging.debug("DEBUG: Calling searcher.search(query=%r, max_number_of_chunks=%d, ...)", query, maxNumberOfChunks)
 
     # Try common alternative names if 'query' fails
     search_results = searcher.search(
@@ -196,30 +197,30 @@ if __name__ == "__main__":
     import uvicorn
     
     # Run with HTTP transport using uvicorn directly with custom host/port
-    print(f"Starting MCP HTTP server on 0.0.0.0:{args['port']}")
-    print("MCP tools available:")
-    print("  - list_available_collections: Get list of all available collections")
-    print("  - search_in_collection: Search in a specific collection")
-    print("  - fetch_from_collection: Fetch a document from a specific collection")
+    logging.info(f"Starting MCP HTTP server on 0.0.0.0:{args['port']}")
+    logging.info("MCP tools available:")
+    logging.info("  - list_available_collections: Get list of all available collections")
+    logging.info("  - search_in_collection: Search in a specific collection")
+    logging.info("  - fetch_from_collection: Fetch a document from a specific collection")
     
     # Show available collections on startup
     collections = get_available_collections()
-    print(f"\nAvailable collections: {', '.join(collections) if collections else 'None found'}")
+    logging.info(f"\nAvailable collections: {', '.join(collections) if collections else 'None found'}")
     
     # Get the ASGI app from FastMCP using the public streamable_http_app attribute
     app = mcp.streamable_http_app
     
     # Debug: Check if the app has middleware that validates Host headers
     if hasattr(app, 'middleware_stack'):
-        print("\nApp middleware_stack type:", type(app.middleware_stack))
+        logging.debug("\nApp middleware_stack type: %s", type(app.middleware_stack))
     if hasattr(app, 'routes'):
-        print("App routes:", app.routes)
+        logging.debug("App routes: %s", app.routes)
     
     # Try to configure the app to allow all hosts
     # This might require modifying the middleware or adding custom middleware
-    print("\nConfiguring app to allow connections from any host...")
+    logging.debug("\nConfiguring app to allow connections from any host...")
     
     # Run with uvicorn directly with the desired host and port
-    print(f"\nServer will be accessible at http://localhost:{args['port']}/mcp")
-    print(f"Server will be accessible at http://<your-ip>:{args['port']}/mcp")
+    logging.info(f"\nServer will be accessible at http://localhost:{args['port']}/mcp")
+    logging.info(f"Server will be accessible at http://<your-ip>:{args['port']}/mcp")
     uvicorn.run(app, host=args['host'], port=args['port'], log_level="info", proxy_headers=True, forwarded_allow_ips="*")
