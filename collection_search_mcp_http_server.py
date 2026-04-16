@@ -143,26 +143,13 @@ def search_in_collection(
     print(f"DEBUG: Calling searcher.search(query={query!r}, max_number_of_chunks={maxNumberOfChunks}, ...)", file=sys.stderr)
 
     # Try common alternative names if 'query' fails
-    try:
-        search_results = searcher.search(
-            query,
-            max_number_of_chunks=maxNumberOfChunks,
-            max_number_of_documents=maxNumberOfDocuments,
-            include_text_content=includeFullText,
-            include_matched_chunks_content=not includeFullText
-        )
-    except TypeError as e:
-        if "unexpected keyword argument 'query'" in str(e):
-            print(f"WARNING: 'query' not accepted by searcher; trying 'q'...", file=sys.stderr)
-            search_results = searcher.search(
-                query,
-                max_number_of_chunks=maxNumberOfChunks,
-                max_number_of_documents=maxNumberOfDocuments,
-                include_text_content=includeFullText,
-                include_matched_chunks_content=not includeFullText
-            )
-        else:
-            raise
+    search_results = searcher.search(
+        query,
+        max_number_of_chunks=maxNumberOfChunks,
+        max_number_of_documents=maxNumberOfDocuments,
+        include_text_content=includeFullText,
+        include_matched_chunks_content=not includeFullText
+    )
     
     return format_object(search_results, format)
 
