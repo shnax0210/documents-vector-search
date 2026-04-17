@@ -42,18 +42,6 @@ def get_available_collections() -> List[str]:
     
     return sorted(collections)
 
-def create_collection_searcher_wrapper(collection_name: str, **kwargs):
-    """Create a searcher for a specific collection with error handling."""
-    try:
-        return create_collection_searcher(
-            collection_name=collection_name,
-            index_names=kwargs.get('indexes'),
-            filter=kwargs.get('filter'),
-            rrf_k=kwargs.get('rrfK', 60)
-        )
-    except Exception as e:
-        raise ValueError(f"Failed to create searcher for collection '{collection_name}': {str(e)}")
-
 def create_collection_fetcher_wrapper(collection_name: str):
     """Create a fetcher for a specific collection with error handling."""
     try:
@@ -133,12 +121,12 @@ def search_in_collection(
     if indexes:
         index_list = [idx.strip() for idx in indexes.split(',')]
     
-    searcher = create_collection_searcher_wrapper(
-        collection_name=collection_name,
-        indexes=index_list,
-        filter=filter,
-        rrfK=rrfK
-    )
+    searcher =  create_collection_searcher(
+            collection_name=collection_name,
+            index_names=index_list,
+            filter=filter,
+            rrf_k=rrfK
+        )
     
     # Debug: Log actual call being made
     logging.debug("DEBUG: Calling searcher.search(text_query=%r, max_number_of_chunks=%d, ...)", text_query, maxNumberOfChunks)
@@ -220,6 +208,5 @@ if __name__ == "__main__":
     logging.debug("\nConfiguring app to allow connections from any host...")
     
     # Run with uvicorn directly with the desired host and port
-    logging.info(f"\nServer will be accessible at http://localhost:{args['port']}/mcp")
     logging.info(f"Server will be accessible at http://<your-ip>:{args['port']}/mcp")
     uvicorn.run(app, host=args['host'], port=args['port'], log_level="info", proxy_headers=True, forwarded_allow_ips="*")
