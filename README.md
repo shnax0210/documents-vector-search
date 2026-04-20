@@ -277,6 +277,6 @@ uv run pytest
 
 ## Good to know
 
-- **Incremental updates** — only new/changed documents are re-indexed. Uses `lastModifiedDocumentTime` from `manifest.json` (minus 1 day for Confluence and 5 mins for Jira buffer to avoid missing concurrent updates and possible issues with different time zones);
+- **Incremental updates** — only new/changed documents are re-indexed. Uses `lastModifiedDocumentTime` from `manifest.json` (5 mins for Jira and Confluence buffer to avoid missing concurrent updates);
 - **Caching** — Jira/Confluence collection creation caches downloaded documents in `./data/caches/{hash}`. Same parameters = same cache. If you need fresh data, either run an update after creation, or delete the cache folder manually;
 - there are more parameters in scripts, use "--help" to get more.

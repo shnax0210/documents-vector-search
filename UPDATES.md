@@ -1,5 +1,9 @@
 # Updates
 
+## 2026/04/20
+- Fixed https://github.com/shnax0210/documents-vector-search/issues/15
+- Improved Confluence update query to ave only 5 mins of overlap between two updates;
+
 ## 2026/04/07
 - Improved Jira incremental indexing:
 	- Collection updates now use precise Jira watermark query (`updated >= "YYYY/MM/DD HH:mm"`) with a short overlap window by default;

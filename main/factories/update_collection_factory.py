@@ -44,21 +44,25 @@ def __create_collection_updater(collection_name):
                                      persister=disk_persister,
                                      operation_type=OPERATION_TYPE.UPDATE)
 
-
 def __calculate_exact_update_time(manifest):
     return datetime.fromisoformat(manifest['lastModifiedDocumentTime'])
 
-def __calculate_update_time(manifest):
-    return __calculate_exact_update_time(manifest) - timedelta(days=1)
+def __build_query_with_update_filter(original_query: str, filter_clause: str) -> str:
+    if not original_query.strip():
+        return filter_clause
+    return f"({original_query}) AND {filter_clause}"
 
-def __calculate_update_date(manifest):
-    return __calculate_update_time(manifest).date()
-
-def __build_jira_update_query_addition(manifest):
-    # Subtract a short overlap window to avoid missing updates around clock drift.
+def __format_update_watermark(manifest, date_format: str) -> str:
     watermark = __calculate_exact_update_time(manifest) - timedelta(minutes=5)
-    watermark_jql = watermark.strftime("%Y/%m/%d %H:%M")
-    return f'AND updated >= "{watermark_jql}"'
+    return watermark.strftime(date_format)
+
+def __build_jira_update_filter(manifest) -> str:
+    watermark_jql = __format_update_watermark(manifest, "%Y/%m/%d %H:%M")
+    return f'updated >= "{watermark_jql}"'
+
+def __build_confluence_update_filter(manifest) -> str:
+    watermark_cql = __format_update_watermark(manifest, "%Y-%m-%d %H:%M")
+    return f'(created >= "{watermark_cql}" OR lastModified >= "{watermark_cql}")'
 
 def __create_reader_and_converter(manifest):
     if manifest['reader']['type'] == 'jira':
@@ -96,10 +100,10 @@ def __create_jira_reader_and_converter(manifest):
     login = os.environ.get('JIRA_LOGIN')
     password = os.environ.get('JIRA_PASSWORD')
 
-    query_addition = __build_jira_update_query_addition(manifest)
+    query = __build_query_with_update_filter(manifest['reader']['query'], __build_jira_update_filter(manifest))
 
     reader = JiraDocumentReader(base_url=manifest['reader']['baseUrl'], 
-                                    query=f"{manifest['reader']['query']} {query_addition}",
+                                    query=query,
                                     token=token,
                                     login=login, 
                                     password=password, 
@@ -114,10 +118,10 @@ def __create_jira_cloud_reader_and_converter(manifest):
     if not email or not api_token:
         raise ValueError("Both 'ATLASSIAN_EMAIL' and 'ATLASSIAN_TOKEN' environment variables must be provided for Jira Cloud.")
 
-    query_addition = __build_jira_update_query_addition(manifest)
+    query = __build_query_with_update_filter(manifest['reader']['query'], __build_jira_update_filter(manifest))
 
     reader = JiraCloudDocumentReader(base_url=manifest['reader']['baseUrl'], 
-                                    query=f"{manifest['reader']['query']} {query_addition}",
+                                    query=query,
                                     email=email,
                                     api_token=api_token, 
                                     batch_size=manifest['reader']['batchSize'])
@@ -132,11 +136,10 @@ def __create_confluence_reader_and_converter(manifest):
     if not token and (not login or not password):
         raise ValueError("Either 'token' ('CONF_TOKEN' env variable) or both 'login' ('CONF_LOGIN' env variable) and 'password' ('CONF_PASSWORD' env variable) must be provided.")
 
-    update_date = __calculate_update_date(manifest).isoformat()
-    query_addition = f'AND (created >= "{update_date}" OR lastModified >= "{update_date}")'
+    query = __build_query_with_update_filter(manifest['reader']['query'], __build_confluence_update_filter(manifest))
 
     reader = ConfluenceDocumentReader(base_url=manifest['reader']['baseUrl'], 
-                                          query=f"{manifest['reader']['query']} {query_addition}",
+                                          query=query,
                                           token=token,
                                           login=login, 
                                           password=password, 
@@ -152,11 +155,10 @@ def __create_confluence_cloud_reader_and_converter(manifest):
     if not email or not api_token:
         raise ValueError("Both 'ATLASSIAN_EMAIL' and 'ATLASSIAN_TOKEN' environment variables must be provided for Confluence Cloud.")
 
-    update_date = __calculate_update_date(manifest).isoformat()
-    query_addition = f'AND (created >= "{update_date}" OR lastModified >= "{update_date}")'
+    query = __build_query_with_update_filter(manifest['reader']['query'], __build_confluence_update_filter(manifest))
 
     reader = ConfluenceCloudDocumentReader(base_url=manifest['reader']['baseUrl'], 
-                                          query=f"{manifest['reader']['query']} {query_addition}",
+                                          query=query,
                                           email=email,
                                           api_token=api_token, 
                                           batch_size=manifest['reader']['batchSize'],
