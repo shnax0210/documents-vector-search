@@ -15,6 +15,9 @@
     - [Filtering by metafields](#filtering-by-metafields)
   - [Fetch](#fetch)
   - [Set up MCP](#set-up-mcp)
+    - [Unified MCP (recommended)](#unified-mcp-recommended)
+    - [Simple MCP](#simple-mcp)
+  - [Run unit tests](#run-unit-tests)
 - [Good to know](#good-to-know)
 
 ## Overview
@@ -240,7 +243,57 @@ uv run collection_fetch_cmd_adapter.py \
 
 ### Set up MCP
 
+There are two MCP server adapters:
+
+| Adapter | Best for | Key differences |
+|---|---|---|
+| `collection_search_unified_mcp_adapter.py` | Modern AI models | All collections in one server. AI model chooses collection, filter and number of chunks. Supports stdio and HTTP transport. |
+| `collection_search_mcp_stdio_adapter.py` | Simpler AI models or restricted setups | One collection per server. Collection, filter and other settings are hardcoded via CLI args. Stdio only. |
+
+#### Unified MCP (recommended)
+
 Add to your MCP config (e.g., `.vscode/mcp.json` for VS Code + GitHub Copilot):
+
+```json
+{
+    "servers": {
+        "dvs": {
+            "type": "stdio",
+            "command": "uv",
+            "args": [
+                "--directory", "${fullPathToRootProjectFolder}",
+                "run", "collection_search_unified_mcp_adapter.py"
+            ]
+        }
+    }
+}
+```
+
+- All collections from `./data/collections/` are available automatically
+- Use `--collections "name1" "name2"` to limit which collections are exposed
+- Use `--rrfK {number}` to tune Reciprocal Rank Fusion behavior for multi-index search
+- Use  `--defaultNumberOfChunks {number}` and `--maxNumberOfChunks {number}` to tune the number of text chunks returned by a single search
+
+Or start as http server:
+
+```bash
+uv run collection_search_unified_mcp_adapter.py --http --port 8000
+```
+
+And setup mcp like:
+
+```json
+{
+    "servers": {
+        "dvs": {
+            "type": "http",
+            "url": "http://localhost:8000/mcp",
+        }
+    }
+}
+```
+
+#### Simple MCP
 
 ```json
 {

@@ -1,5 +1,8 @@
 # Updates
 
+## 2026/04/22
+- Added unified MCP adapter (`collection_search_unified_mcp_adapter.py`): serves all collections from one MCP server, AI model can choose collection, filter results by metadata and control number of returned chunks. Supports stdio and HTTP transport. The previous simple MCP adapter (`collection_search_mcp_stdio_adapter.py`) is still available for simpler setups.
+
 ## 2026/04/20
 - Fixed https://github.com/shnax0210/documents-vector-search/issues/15
 - Improved Confluence update query to ave only 5 mins of overlap between two updates;
