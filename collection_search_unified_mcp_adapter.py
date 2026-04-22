@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 import argparse
 import json
+import logging
 import os
-import sys
 import threading
 from typing import Annotated
 
@@ -18,6 +18,9 @@ ap = argparse.ArgumentParser()
 ap.add_argument("-c", "--collections", nargs="*", default=None, help="Collections to search in. If not passed, all collections are available.")
 ap.add_argument("-rrfK", "--rrfK", required=False, type=int, default=60, help="RRF constant for multi-index search fusion.")
 ap.add_argument("-f", "--format", default="toon", required=False, choices=["json", "json_with_indent", "toon"], help="Output format.")
+
+ap.add_argument("--defaultNumberOfChunks", type=int, default=50, help="Default number of chunks returned by search (default: 50).")
+ap.add_argument("--maxNumberOfChunks", type=int, default=100, help="Maximum allowed number of chunks for search (default: 100).")
 
 ap.add_argument("--http", action="store_true", default=False, help="Run MCP server over HTTP (streamable-http) instead of stdio.")
 ap.add_argument("--http-port", type=int, default=8000, help="Port for HTTP transport (default: 8000).")
@@ -43,18 +46,27 @@ FILTER_FIELDS_BY_TYPE = {
     "files": ["createdAt", "lastModifiedAt", "folder1", "folder2", "...", "folderN"],
 }
 
+def __read_json_file(path):
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
 def __discover_collections(allowed_names: list[str] | None) -> list[dict]:
     collections = []
     for name in sorted(os.listdir(COLLECTIONS_BASE_PATH)):
-        manifest_path = os.path.join(COLLECTIONS_BASE_PATH, name, "manifest.json")
+        collection_path = os.path.join(COLLECTIONS_BASE_PATH, name)
+        manifest_path = os.path.join(collection_path, "manifest.json")
+
         if not os.path.isfile(manifest_path):
             continue
-        with open(manifest_path, "r", encoding="utf-8") as f:
-            manifest = json.load(f)
+
+        manifest = __read_json_file(manifest_path)
+
         reader_type = manifest.get("reader", {}).get("type", "")
         collection_type = COLLECTION_TYPE_MAP.get(reader_type)
+
         if not collection_type:
-            continue
+            raise ValueError(f"Unknown reader type '{reader_type}' for collection '{name}' in manifest.json. Supported types: {COLLECTION_TYPE_MAP}")
+
         if allowed_names is not None and name not in allowed_names:
             continue
         collections.append({
@@ -68,8 +80,7 @@ def __validate_collections(allowed_names: list[str], discovered: list[dict]) -> 
     discovered_names = {c["name"] for c in discovered}
     missing = set(allowed_names) - discovered_names
     if missing:
-        print(f"Error: collections not found: {', '.join(sorted(missing))}", file=sys.stderr)
-        sys.exit(1)
+        raise ValueError(f"Error: collections not found: {', '.join(sorted(missing))}, available: {', '.join(sorted(discovered_names))}")
 
 def __build_search_tool_description(collections: list[dict]) -> str:
     present_types = sorted({c["type"] for c in collections})
@@ -125,8 +136,7 @@ if args["collections"] is not None:
     __validate_collections(args["collections"], discovered)
 
 if not discovered:
-    print("Error: no collections found.", file=sys.stderr)
-    sys.exit(1)
+    raise ValueError("Error: no collections found.")
 
 search_description = __build_search_tool_description(discovered)
 available_names = {c["name"] for c in discovered}
@@ -154,16 +164,18 @@ def search_in_collection(
     collectionName: Annotated[str, Field(description="Collection name must be one of the available collections listed above.")],
     query: Annotated[str, Field(description="Search query text for vector similarity and keyword search.", default="")],
     filter: Annotated[str | None, Field(description="Filter expression to narrow results. See filter syntax above.", default=None)],
-    maxNumberOfChunks: Annotated[int, Field(description="Maximum number of document chunks to return. Prefer to use default value unless there is strong reason to change", default=50)],
+    numberOfChunks: Annotated[int, Field(description=f"Number of best matched document chunks to return. Prefer to use default value unless there is strong reason to change. Max allowed: {args['maxNumberOfChunks']}.", default=args["defaultNumberOfChunks"])],
 ) -> str:
     if collectionName not in available_names:
         return f"Error: collection '{collectionName}' is not available. Available: {', '.join(sorted(available_names))}"
     if not query and not filter:
         return "Error: at least one of 'query' or 'filter' must be provided."
+    if numberOfChunks > args["maxNumberOfChunks"]:
+        return f"Error: numberOfChunks ({numberOfChunks}) exceeds maximum allowed ({args['maxNumberOfChunks']})."
 
     search_results = __get_or_create_searcher(collectionName).search(
         query or "",
-        max_number_of_chunks=maxNumberOfChunks,
+        max_number_of_chunks=numberOfChunks,
         include_matched_chunks_content=True,
         filter=filter or None,
     )
