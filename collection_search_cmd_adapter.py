@@ -27,7 +27,7 @@ ap.add_argument("-includeMatchedChunksText", "--includeMatchedChunksText", actio
 ap.add_argument("-format", "--format", default="json_with_indent", required=False, choices=['json', 'json_with_indent', 'toon'], help="Output format for the search result (e.g., 'json', 'json_with_indent', 'toon')")
 args = vars(ap.parse_args())
 
-searcher = create_collection_searcher(collection_name=args['collection'], index_names=args['indexes'], filter=args['filter'], rrf_k=args['rrfK'])
+searcher = create_collection_searcher(collection_name=args['collection'], index_names=args['indexes'], rrf_k=args['rrfK'])
 
 max_number_of_chunks = args['maxNumberOfChunks'] if args['maxNumberOfChunks'] is not None else args['maxNumberOfDocuments'] * 3
 search_result = log_execution_duration(lambda: searcher.search(args['query'],
@@ -35,7 +35,8 @@ search_result = log_execution_duration(lambda: searcher.search(args['query'],
                                                                max_number_of_documents=args['maxNumberOfDocuments'], 
                                                                include_text_content=args['includeFullText'], 
                                                                include_matched_chunks_content=args['includeMatchedChunksText'],
-                                                               include_all_chunks_content=args['includeAllChunksText']),
+                                                               include_all_chunks_content=args['includeAllChunksText'],
+                                                               filter=args['filter']),
                                        identifier=f"Searching collection: \"{args['collection']}\" by query: \"{args['query']}\"")
 
 logging.info(f"Search results:\n{format_object(search_result, args['format'])}")

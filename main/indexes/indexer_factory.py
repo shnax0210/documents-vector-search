@@ -1,12 +1,16 @@
 import json
 import os
-from typing import List, Optional
+import threading
+from typing import List
 from .indexers.base_indexer import BaseIndexer
 from .indexers.faiss_indexer import FaissIndexer
 from .indexers.chroma_indexer import ChromaIndexer
 from .indexers.sqllite_indexer import SqlliteIndexer
 from .embeddings.base_embedder import BaseEmbedder
 from .embeddings.sentence_embeder import SentenceEmbedder
+
+__embedder_cache: dict[str, BaseEmbedder] = {}
+__embedder_cache_lock = threading.Lock()
 
 def __get_available_indexes(collection_name, persister):
     manifest_path = f"{collection_name}/manifest.json"
@@ -31,12 +35,20 @@ def __split_indexer_name(indexer_name):
     raise ValueError(f"Invalid indexer name format: {indexer_name}")
 
 def __create_sentence_embedder(embedding_model) -> BaseEmbedder:
-    # Check for old name formats for backward compatibility
+    if embedding_model in __embedder_cache:
+        return __embedder_cache[embedding_model]
+
+    with __embedder_cache_lock:
+        if embedding_model not in __embedder_cache:
+            __embedder_cache[embedding_model] = __create_sentence_embedder_uncached(embedding_model)
+
+    return __embedder_cache[embedding_model]
+
+def __create_sentence_embedder_uncached(embedding_model) -> BaseEmbedder:
     model = __create_sentence_embedder_by_old_embedding_model_name(embedding_model)
     if model is not None:
         return model
 
-    # New format allows any model name, but it should start with "embeddings_" and replace "/" with "_slash_"
     parsed_model_name = embedding_model.replace("embeddings_", "").replace("_slash_", "/")
     return SentenceEmbedder(model_name=parsed_model_name)
 
