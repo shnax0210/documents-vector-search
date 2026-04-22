@@ -14,13 +14,19 @@ from main.factories.search_collection_factory import create_collection_searcher
 from main.utils.formatting import format_object
 from main.utils.logger import setup_root_logger
 
-setup_root_logger(use_stderr=True)
-
 ap = argparse.ArgumentParser()
 ap.add_argument("-c", "--collections", nargs="*", default=None, help="Collections to search in. If not passed, all collections are available.")
 ap.add_argument("-rrfK", "--rrfK", required=False, type=int, default=60, help="RRF constant for multi-index search fusion.")
 ap.add_argument("-f", "--format", default="toon", required=False, choices=["json", "json_with_indent", "toon"], help="Output format.")
+
+ap.add_argument("--http", action="store_true", default=False, help="Run MCP server over HTTP (streamable-http) instead of stdio.")
+ap.add_argument("--http-port", type=int, default=8000, help="Port for HTTP transport (default: 8000).")
+
 args = vars(ap.parse_args())
+
+transport = "streamable-http" if args["http"] else "stdio"
+
+setup_root_logger(use_stderr=(transport == "stdio"))
 
 __COLLECTIONS_BASE_PATH = "./data/collections"
 
@@ -127,7 +133,7 @@ if not discovered:
     print("Error: no collections found.", file=sys.stderr)
     sys.exit(1)
 
-mcp = FastMCP("documents-search-unified")
+mcp = FastMCP("documents-search-unified", port=args["http_port"])
 
 search_description = __build_search_tool_description(discovered)
 available_names = {c["name"] for c in discovered}
@@ -186,4 +192,4 @@ def fetch_from_collection(
     return format_object(result, args["format"])
 
 
-mcp.run(transport="stdio")
+mcp.run(transport=transport)
