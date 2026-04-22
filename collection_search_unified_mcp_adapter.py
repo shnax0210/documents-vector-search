@@ -21,16 +21,15 @@ ap.add_argument("-f", "--format", default="toon", required=False, choices=["json
 
 ap.add_argument("--http", action="store_true", default=False, help="Run MCP server over HTTP (streamable-http) instead of stdio.")
 ap.add_argument("--http-port", type=int, default=8000, help="Port for HTTP transport (default: 8000).")
-
 args = vars(ap.parse_args())
 
 transport = "streamable-http" if args["http"] else "stdio"
 
 setup_root_logger(use_stderr=(transport == "stdio"))
 
-__COLLECTIONS_BASE_PATH = "./data/collections"
+COLLECTIONS_BASE_PATH = "./data/collections"
 
-__COLLECTION_TYPE_MAP = {
+COLLECTION_TYPE_MAP = {
     "confluence": "confluence",
     "confluenceCloud": "confluence",
     "jira": "jira",
@@ -38,23 +37,22 @@ __COLLECTION_TYPE_MAP = {
     "localFiles": "files",
 }
 
-__FILTER_FIELDS_BY_TYPE = {
+FILTER_FIELDS_BY_TYPE = {
     "confluence": ["space", "createdAt", "createdBy", "lastModifiedAt"],
     "jira": ["project", "type", "status", "priority", "epic", "assignee", "createdAt", "createdBy", "lastModifiedAt"],
     "files": ["createdAt", "lastModifiedAt", "folder1", "folder2", "...", "folderN"],
 }
 
-
 def __discover_collections(allowed_names: list[str] | None) -> list[dict]:
     collections = []
-    for name in sorted(os.listdir(__COLLECTIONS_BASE_PATH)):
-        manifest_path = os.path.join(__COLLECTIONS_BASE_PATH, name, "manifest.json")
+    for name in sorted(os.listdir(COLLECTIONS_BASE_PATH)):
+        manifest_path = os.path.join(COLLECTIONS_BASE_PATH, name, "manifest.json")
         if not os.path.isfile(manifest_path):
             continue
         with open(manifest_path, "r", encoding="utf-8") as f:
             manifest = json.load(f)
         reader_type = manifest.get("reader", {}).get("type", "")
-        collection_type = __COLLECTION_TYPE_MAP.get(reader_type)
+        collection_type = COLLECTION_TYPE_MAP.get(reader_type)
         if not collection_type:
             continue
         if allowed_names is not None and name not in allowed_names:
@@ -66,7 +64,6 @@ def __discover_collections(allowed_names: list[str] | None) -> list[dict]:
         })
     return collections
 
-
 def __validate_collections(allowed_names: list[str], discovered: list[dict]) -> None:
     discovered_names = {c["name"] for c in discovered}
     missing = set(allowed_names) - discovered_names
@@ -74,12 +71,11 @@ def __validate_collections(allowed_names: list[str], discovered: list[dict]) -> 
         print(f"Error: collections not found: {', '.join(sorted(missing))}", file=sys.stderr)
         sys.exit(1)
 
-
 def __build_search_tool_description(collections: list[dict]) -> str:
     present_types = sorted({c["type"] for c in collections})
 
     filter_rows = "\n".join(
-        f"| {t} | {', '.join(__FILTER_FIELDS_BY_TYPE[t])} |"
+        f"| {t} | {', '.join(FILTER_FIELDS_BY_TYPE[t])} |"
         for t in present_types
     )
 
@@ -110,8 +106,7 @@ Examples:
 - (space = "X" or space = "Y") and createdBy = "user"
 """
 
-
-__FETCH_TOOL_DESCRIPTION = """Fetch a full document from a collection by its id.
+FETCH_TOOL_DESCRIPTION = """Fetch a full document from a collection by its id.
 Use startLine and endLine to read a specific portion of the document. If document is too large, fetch it in parts.
 
 `id` means:
@@ -133,14 +128,11 @@ if not discovered:
     print("Error: no collections found.", file=sys.stderr)
     sys.exit(1)
 
-mcp = FastMCP("documents-search-unified", port=args["http_port"])
-
 search_description = __build_search_tool_description(discovered)
 available_names = {c["name"] for c in discovered}
 
 searcher_cache = {}
 searcher_cache_lock = threading.Lock()
-
 
 def __get_or_create_searcher(collectionName: str):
     if collectionName in searcher_cache:
@@ -155,6 +147,7 @@ def __get_or_create_searcher(collectionName: str):
 
     return searcher_cache[collectionName]
 
+mcp = FastMCP("documents-search-unified", port=args["http_port"])
 
 @mcp.tool(name="search_in_collection", description=search_description)
 def search_in_collection(
@@ -176,8 +169,7 @@ def search_in_collection(
     )
     return format_object(search_results, args["format"])
 
-
-@mcp.tool(name="fetch_from_collection", description=__FETCH_TOOL_DESCRIPTION)
+@mcp.tool(name="fetch_from_collection", description=FETCH_TOOL_DESCRIPTION)
 def fetch_from_collection(
     collectionName: Annotated[str, Field(description="Name of the collection to fetch from. Must be one of the available collections.")],
     id: Annotated[str, Field(description="Document identifier. Confluence: page id. Jira: issue key (e.g. PROJ-123). Files: relative path.")],
@@ -190,6 +182,5 @@ def fetch_from_collection(
     fetcher = create_collection_fetcher(collection_name=collectionName)
     result = fetcher.fetch(id=id, start_line=startLine, end_line=endLine)
     return format_object(result, args["format"])
-
 
 mcp.run(transport=transport)
