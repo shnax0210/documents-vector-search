@@ -6,19 +6,14 @@ from ..indexes.indexers.base_indexer import BaseIndexer
 from ..persisters.base_persister import BasePersister
 
 class DocumentCollectionSearcher:
-    def __init__(self, collection_name: str, indexers: List[BaseIndexer], persister: BasePersister, filter: Optional[str] = None, rrf_k: int = 60):
+    def __init__(self, collection_name: str, indexers: List[BaseIndexer], persister: BasePersister, rrf_k: int = 60):
         if rrf_k <= 0:
             raise ValueError("rrf_k should be greater than 0")
 
         self.collection_name = collection_name
         self.__indexers = indexers
         self.__persister = persister
-        self.__filter = filter
         self.__rrf_k = rrf_k
-
-        for indexer in self.__indexers:
-            if self.__filter and not indexer.support_metadata():
-                raise NotImplementedError(f"Filter works only with indexers that support metadata (chromadb), {indexer.get_name()} does not support it.")
 
     def search(self, 
                text, 
@@ -26,11 +21,17 @@ class DocumentCollectionSearcher:
                max_number_of_documents=None, 
                include_text_content=False, 
                include_all_chunks_content=False, 
-               include_matched_chunks_content=False) -> dict:
+               include_matched_chunks_content=False,
+               filter: Optional[str] = None) -> dict:
+        if filter:
+            for indexer in self.__indexers:
+                if not indexer.support_metadata():
+                    raise NotImplementedError(f"Filter works only with indexers that support metadata (chromadb), {indexer.get_name()} does not support it.")
+
         if len(self.__indexers) == 1:
-            scores, indexes = self.__indexers[0].search(text, max_number_of_chunks, self.__filter)
+            scores, indexes = self.__indexers[0].search(text, max_number_of_chunks, filter)
         else:
-            scores, indexes = self.__multi_index_search(text, max_number_of_chunks)
+            scores, indexes = self.__multi_index_search(text, max_number_of_chunks, filter)
 
         results = self.__build_results(scores, indexes, include_text_content, include_all_chunks_content, include_matched_chunks_content)
         if max_number_of_documents:
@@ -42,11 +43,11 @@ class DocumentCollectionSearcher:
             "results": results,
         }
 
-    def __multi_index_search(self, text, max_number_of_chunks):
+    def __multi_index_search(self, text, max_number_of_chunks, filter):
         rrf_scores = {}
 
         for indexer in self.__indexers:
-            scores, indexes = indexer.search(text, max_number_of_chunks, self.__filter)
+            scores, indexes = indexer.search(text, max_number_of_chunks, filter)
             if len(indexes[0]) == 0:
                 continue
             for rank, chunk_id in enumerate(indexes[0]):

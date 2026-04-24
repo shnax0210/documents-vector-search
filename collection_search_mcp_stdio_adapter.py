@@ -29,7 +29,7 @@ ap.add_argument("-includeFullText", "--includeFullText", action="store_true", re
 ap.add_argument("-format", "--format", default="toon", required=False, choices=['json', 'json_with_indent', 'toon'], help="Output format for the search result (e.g., 'json', 'json_with_indent', 'toon')")
 args = vars(ap.parse_args())
 
-searcher = create_collection_searcher(collection_name=args['collection'], index_names=args['indexes'], filter=args['filter'], rrf_k=args['rrfK'])
+searcher = create_collection_searcher(collection_name=args['collection'], index_names=args['indexes'], rrf_k=args['rrfK'])
 fetcher = create_collection_fetcher(collection_name=args['collection'])
 
 tool_description = """The tool allows searching in collection of documents by vector search. 
@@ -41,7 +41,8 @@ def search_documents(query: str) -> str:
                                      max_number_of_chunks=args['maxNumberOfChunks'], 
                                      max_number_of_documents=args['maxNumberOfDocuments'],
                                      include_text_content=args['includeFullText'],
-                                     include_matched_chunks_content=not args['includeFullText'])
+                                     include_matched_chunks_content=not args['includeFullText'],
+                                     filter=args['filter'])
 
     return format_object(search_results, args['format'])
 
