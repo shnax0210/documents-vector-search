@@ -6,6 +6,8 @@
   - [Collection structure](#collection-structure)
   - [Indexers configuration](#indexers-configuration)
 - [Setup](#setup)
+  - [Local setup](#local-setup)
+  - [Docker setup](#docker-setup)
   - [Authentication](#authentication)
   - [Create collection for Confluence](#create-collection-for-confluence)
   - [Create collection for Jira](#create-collection-for-jira)
@@ -91,9 +93,47 @@ You can define as many indexers as you want, their search results will be combin
 
 ## Setup
 
+### Local setup
+
 1. Clone the repository
 2. Install [uv](https://docs.astral.sh/uv/)
 3. Run `uv sync` in the project root
+
+### Docker setup
+
+A `Dockerfile` is included for running the tool without installing Python or uv locally.
+
+**Build the image:**
+```bash
+docker build -t documents-vector-search .
+```
+
+**Run any command** by passing it as arguments and mounting a local `data/` folder:
+```bash
+docker run --rm \
+  -v $(pwd)/data:/app/data \
+  -e CONF_TOKEN="${yourToken}" \
+  documents-vector-search \
+  uv run confluence_collection_create_cmd_adapter.py \
+    --collection "confluence" \
+    --url "${baseConfluenceUrl}" \
+    --cql "${confluenceQuery}"
+```
+
+- Mount `-v $(pwd)/data:/app/data` so collections and caches are persisted on your host machine
+- Pass credentials as `-e ENV_VAR=value` (see [Authentication](#authentication))
+- The `data/` folder structure (`collections/`, `caches/`, `local_file_input/`) is created automatically inside the container
+
+**Run the unified MCP HTTP server with Docker:**
+```bash
+docker run --rm \
+  -p 8000:8000 \
+  -v $(pwd)/data:/app/data \
+  documents-vector-search \
+  uv run collection_search_unified_mcp_adapter.py --http --port 8000
+```
+
+Then configure your MCP client to connect to `http://localhost:8000/mcp`.
 
 ### Authentication
 
