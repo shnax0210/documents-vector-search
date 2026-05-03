@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import argparse
 import json
-import logging
 import os
 import threading
 from typing import Annotated
@@ -83,6 +82,29 @@ def __validate_collections(allowed_names: list[str], discovered: list[dict]) -> 
         raise ValueError(f"Error: collections not found: {', '.join(sorted(missing))}, available: {', '.join(sorted(discovered_names))}")
 
 def __build_search_tool_description(collections: list[dict]) -> str:
+    return """Search in a collection of documents.
+
+Typical use cases:
+- User asks to search in a specific collection;
+- User asks to search in a system for which there is a dedicated collection (e.g. "search in Confluence/Jira/Files"). In this case, you must to select most relevant collection for the system if there are several.
+
+Each document contains 'url' field, if you consider a document as relevant to the query, always include the 'url' field in the response, put it close to the information used from the document.
+"""
+
+def __build_collection_field_description(collections: list[dict]) -> str:
+    collection_rows = "\n".join(
+        f"| {c['name']} | {c['type']} |"
+        for c in collections
+    )
+
+    return f"""Collection name must be one of below:
+
+| Collection name | Collection type |
+|---|---|
+{collection_rows}
+"""
+
+def __build_filter_field_description(collections: list[dict]) -> str:
     present_types = sorted({c["type"] for c in collections})
 
     filter_rows = "\n".join(
@@ -90,21 +112,9 @@ def __build_search_tool_description(collections: list[dict]) -> str:
         for t in present_types
     )
 
-    collection_rows = "\n".join(
-        f"| {c['name']} | {c['type']} | {c['numberOfDocuments']} |"
-        for c in collections
-    )
+    return f"""Filter expression to narrow results.
 
-    return f"""Search in a collection of documents by vector search.
-Each document contains 'url' field, if you consider a document as relevant to the query, always include the 'url' field in the response, put it close to the information used from the document.
-
-Available collections:
-
-| Collection name | Collection type | Number of documents |
-|---|---|---|
-{collection_rows}
-
-Filter fields by collection type:
+Each collection type supports different fields:
 
 | Collection type | Filter fields |
 |---|---|
@@ -117,17 +127,11 @@ Examples:
 - (space = "X" or space = "Y") and createdBy = "user"
 """
 
-FETCH_TOOL_DESCRIPTION = """Fetch a full document from a collection by its id.
-Use startLine and endLine to read a specific portion of the document. If document is too large, fetch it in parts.
+FETCH_TOOL_DESCRIPTION = """Fetch a document content from a collection by its id.
 
-`id` means:
-- For Confluence: page id.
-- For Jira: issue key (e.g. PROJ-123).
-- For files collection: relative path.
-
-Users often provides url to the document, extract id from the url and use it to fetch the document in the case.
-
-Available collections are listed in the description of search tool.
+Typical use cases:
+- User asks something and provides an id or url (fetch id from the url in the case) of a document (it can be Confluence page, jira ticket or file path) - fetch the document by the tool and use as a context.
+- After using search_in_collection tool, you need more context from a found document.
 """
 
 discovered = __discover_collections(args["collections"])
@@ -139,6 +143,8 @@ if not discovered:
     raise ValueError("Error: no collections found.")
 
 search_description = __build_search_tool_description(discovered)
+collection_field_description = __build_collection_field_description(discovered)
+filter_field_description = __build_filter_field_description(discovered)
 available_names = {c["name"] for c in discovered}
 
 searcher_cache = {}
@@ -161,19 +167,19 @@ mcp = FastMCP("documents-search-unified", port=args["http_port"])
 
 @mcp.tool(name="search_in_collection", description=search_description)
 def search_in_collection(
-    collectionName: Annotated[str, Field(description="Collection name must be one of the available collections listed above.")],
+    collection: Annotated[str, Field(description=collection_field_description)],
     query: Annotated[str, Field(description="Search query text for vector similarity and keyword search.", default="")],
-    filter: Annotated[str | None, Field(description="Filter expression to narrow results. See filter syntax above.", default=None)],
+    filter: Annotated[str | None, Field(description=filter_field_description, default=None)],
     numberOfChunks: Annotated[int, Field(description=f"Number of best matched document chunks to return. Prefer to use default value unless there is strong reason to change. Max allowed: {args['maxNumberOfChunks']}.", default=args["defaultNumberOfChunks"])],
 ) -> str:
-    if collectionName not in available_names:
-        return f"Error: collection '{collectionName}' is not available. Available: {', '.join(sorted(available_names))}"
+    if collection not in available_names:
+        return f"Error: collection '{collection}' is not available. Available: {', '.join(sorted(available_names))}"
     if not query and not filter:
         return "Error: at least one of 'query' or 'filter' must be provided."
     if numberOfChunks > args["maxNumberOfChunks"]:
         return f"Error: numberOfChunks ({numberOfChunks}) exceeds maximum allowed ({args['maxNumberOfChunks']})."
 
-    search_results = __get_or_create_searcher(collectionName).search(
+    search_results = __get_or_create_searcher(collection).search(
         query or "",
         max_number_of_chunks=numberOfChunks,
         include_matched_chunks_content=True,
@@ -183,15 +189,15 @@ def search_in_collection(
 
 @mcp.tool(name="fetch_from_collection", description=FETCH_TOOL_DESCRIPTION)
 def fetch_from_collection(
-    collectionName: Annotated[str, Field(description="Name of the collection to fetch from. Must be one of the available collections.")],
+    collection: Annotated[str, Field(description=collection_field_description)],
     id: Annotated[str, Field(description="Document identifier. Confluence: page id. Jira: issue key (e.g. PROJ-123). Files: relative path.")],
-    startLine: Annotated[int, Field(description="First line number to return (1-based, inclusive). Default: 1.", default=1)],
-    endLine: Annotated[int, Field(description="Last line number to return (1-based, inclusive). Default: 250.", default=250)],
+    startLine: Annotated[int, Field(description="First line number to return (1-based, inclusive)", default=1)],
+    endLine: Annotated[int, Field(description="Last line number to return (1-based, inclusive)", default=250)],
 ) -> str:
-    if collectionName not in available_names:
-        return f"Error: collection '{collectionName}' is not available. Available: {', '.join(sorted(available_names))}"
+    if collection not in available_names:
+        return f"Error: collection '{collection}' is not available. Available: {', '.join(sorted(available_names))}"
 
-    fetcher = create_collection_fetcher(collection_name=collectionName)
+    fetcher = create_collection_fetcher(collection_name=collection)
     result = fetcher.fetch(id=id, start_line=startLine, end_line=endLine)
     return format_object(result, args["format"])
 
