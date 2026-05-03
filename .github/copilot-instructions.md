@@ -38,3 +38,7 @@ When creating functions, prefer passing parameters instead of using global state
 ## Use `uv` for dependency management and code execution
 - `uv add <package>`
 - `uv run <script>`
+
+# Prefere MCP if it's available for search
+
+When user asks to search something in Confluence/Jira/Files, MCP for collection search is added and there is a relevant collection - always use the MCP (avoid direct search in files or running of `collection_search_cmd_adapter.py` and `collection_fetch_cmd_adapter.py` scripts unless explicitly asked). 

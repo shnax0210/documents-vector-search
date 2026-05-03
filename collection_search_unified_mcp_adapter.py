@@ -84,11 +84,36 @@ def __validate_collections(allowed_names: list[str], discovered: list[dict]) -> 
 def __build_search_tool_description(collections: list[dict]) -> str:
     return """Search in a collection of documents.
 
-Typical use cases:
+# Typical use cases
 - User asks to search in a specific collection;
 - User asks to search in a system for which there is a dedicated collection (e.g. "search in Confluence/Jira/Files"). In this case, you must to select most relevant collection for the system if there are several.
 
-Each document contains 'url' field, if you consider a document as relevant to the query, always include the 'url' field in the response, put it close to the information used from the document.
+# Search summarization
+
+Always follow guides from this section unless user explicitly asks to use different response format.
+
+## Rules
+- Attach a reference (citation such as a Confluence page URL, Jira issue key, or file path) to each piece of information, immediately after the relevant sentence.
+- If you were not able to find relevant information, say that you don't know instead of making something up; 
+- Be concise yet complete;
+- Keep "Overview" section 2-3 sentences long;
+- Keep "Key facts" section 2-7 bullet points long. 
+- Try to put more references (2-15) into "More info" section if there are many of them, and they are not critical for understanding the main point.
+
+## Format
+
+```markdown
+# Overview
+<base_info_here>
+# Key facts
+- <fact1> [ref_name1](ref_link1)
+- <fact2> [ref_name2](ref_link2)
+...
+# More info
+- <additional_info1> [ref_name3](ref_link3)
+- <additional_info2> [ref_name4](ref_link4)
+...
+```
 """
 
 def __build_collection_field_description(collections: list[dict]) -> str:
@@ -129,7 +154,7 @@ Examples:
 
 FETCH_TOOL_DESCRIPTION = """Fetch a document content from a collection by its id.
 
-Typical use cases:
+# Typical use cases
 - User asks something and provides an id or url (fetch id from the url in the case) of a document (it can be Confluence page, jira ticket or file path) - fetch the document by the tool and use as a context.
 - After using search_in_collection tool, you need more context from a found document.
 """
