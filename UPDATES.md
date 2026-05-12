@@ -1,5 +1,8 @@
 # Updates
 
+## 2026/05/12
+- Updated SqlLite indexer to use file based storage instead of inmemory one, since inmemory one has limitation on number data loaded what caused fails for very big collections. Existing collections will be mograted to the new format automatically during first usage.
+
 ## 2026/04/22
 - Added unified MCP adapter (`collection_search_unified_mcp_adapter.py`): serves all collections from one MCP server, AI model can choose collection, filter results by metadata and control number of returned chunks. Supports stdio and HTTP transport. The previous simple MCP adapter (`collection_search_mcp_stdio_adapter.py`) is still available for simpler setups.
 

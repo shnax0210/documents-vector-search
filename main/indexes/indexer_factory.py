@@ -78,7 +78,8 @@ def create_indexer(indexer_name, collection_name=None, persister=None) -> BaseIn
         return ChromaIndexer(indexer_name, __create_sentence_embedder(embedding_model), storage_path)
 
     if indexer_type == "indexer_SqlLiteBM25":
-        return SqlliteIndexer(indexer_name)
+        storage_path = __build_storage_path(indexer_name, collection_name, persister)
+        return SqlliteIndexer(indexer_name, storage_path)
 
     raise ValueError(f"Unknown indexer name: {indexer_name}")
 
@@ -122,7 +123,13 @@ def load_indexer(indexer_name, collection_name, persister) -> BaseIndexer:
         return ChromaIndexer(indexer_name, __create_sentence_embedder(embedding_model), storage_path, serialized_data)
 
     if indexer_type == "indexer_SqlLiteBM25":
+        storage_path = __build_storage_path(indexer_name, collection_name, persister)
+        storage_dir_exists = os.path.isdir(storage_path)
+
+        if storage_dir_exists:
+            return SqlliteIndexer(indexer_name, storage_path)
+
         serialized_data = persister.read_bin_file(f"{collection_name}/indexes/{indexer_name}/indexer")
-        return SqlliteIndexer(indexer_name, serialized_data)
+        return SqlliteIndexer(indexer_name, storage_path, serialized_data)
 
     raise ValueError(f"Unknown indexer name: {indexer_name}")
