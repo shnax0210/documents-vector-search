@@ -37,12 +37,14 @@ COLLECTION_TYPE_MAP = {
     "jira": "jira",
     "jiraCloud": "jira",
     "localFiles": "files",
+    "agentKnowledge": "agentKnowledge",
 }
 
 FILTER_FIELDS_BY_TYPE = {
     "confluence": ["space", "createdAt", "createdBy", "lastModifiedAt"],
     "jira": ["project", "type", "status", "priority", "epic", "assignee", "createdAt", "createdBy", "lastModifiedAt"],
     "files": ["createdAt", "lastModifiedAt", "folder1", "folder2", "...", "folderN"],
+    "agentKnowledge": ["knowledgeType", "scope", "agentName", "skillName", "lastModifiedAt"],
 }
 
 def __read_json_file(path):
@@ -152,6 +154,56 @@ Examples:
 - (space = "X" or space = "Y") and createdBy = "user"
 """
 
+
+AGENT_SKILLS_TOOL_DESCRIPTION = """Discover reusable agent skills from an agentKnowledge collection.
+Use this when the user asks for capabilities, workflows, reusable procedures, or when a task may match an indexed SKILL.md.
+Returns compact discovery metadata; fetch the returned id with fetch_from_collection to activate the full skill instructions.
+"""
+
+AGENT_MEMORY_TOOL_DESCRIPTION = """Search indexed agent memories and project knowledge from an agentKnowledge collection.
+Use this when project conventions, AGENTS.md guidance, remembered preferences, or past agent knowledge may help answer or perform a task.
+"""
+
+def __combine_filters(required_filter: str, optional_filter: str | None) -> str:
+    if not optional_filter:
+        return required_filter
+    return f"({required_filter}) and ({optional_filter})"
+
+def __agent_knowledge_collections() -> set[str]:
+    return {c['name'] for c in discovered if c['type'] == 'agentKnowledge'}
+
+def __ensure_agent_knowledge_collection(collection: str) -> str | None:
+    if collection not in available_names:
+        return f"Error: collection '{collection}' is not available. Available: {', '.join(sorted(available_names))}"
+    agent_collections = __agent_knowledge_collections()
+    if collection not in agent_collections:
+        return f"Error: collection '{collection}' is not an agentKnowledge collection. Available agentKnowledge collections: {', '.join(sorted(agent_collections)) or 'none'}"
+    return None
+
+def __build_skill_discovery_results(search_results: dict) -> dict:
+    skills = []
+    seen_ids = set()
+    for result in search_results['results']:
+        if result['id'] in seen_ids:
+            continue
+        seen_ids.add(result['id'])
+        first_chunk = result.get('matchedChunks', [{}])[0]
+        metadata = result.get('metadata', {})
+        skills.append({
+            'id': result['id'],
+            'name': metadata.get('skillName'),
+            'description': metadata.get('skillDescription'),
+            'scope': metadata.get('scope'),
+            'agentName': metadata.get('agentName'),
+            'path': metadata.get('sourcePath'),
+            'url': result.get('url'),
+            'score': first_chunk.get('score'),
+        })
+    return {
+        'collection': search_results['collection'],
+        'skills': skills,
+    }
+
 FETCH_TOOL_DESCRIPTION = """Fetch a document content from a collection by its id.
 
 # Typical use cases
@@ -225,5 +277,51 @@ def fetch_from_collection(
     fetcher = create_collection_fetcher(collection_name=collection)
     result = fetcher.fetch(id=id, start_line=startLine, end_line=endLine)
     return format_object(result, args["format"])
+
+
+@mcp.tool(name="discover_agent_skills", description=AGENT_SKILLS_TOOL_DESCRIPTION)
+def discover_agent_skills(
+    collection: Annotated[str, Field(description=collection_field_description)],
+    query: Annotated[str, Field(description="Task or capability description used to find relevant skills.", default="")],
+    numberOfSkills: Annotated[int, Field(description=f"Number of matching skills to return. Max allowed: {args['maxNumberOfChunks']}.", default=10)],
+) -> str:
+    error = __ensure_agent_knowledge_collection(collection)
+    if error:
+        return error
+    if numberOfSkills > args["maxNumberOfChunks"]:
+        return f"Error: numberOfSkills ({numberOfSkills}) exceeds maximum allowed ({args['maxNumberOfChunks']})."
+
+    search_results = __get_or_create_searcher(collection).search(
+        query or "skill",
+        max_number_of_chunks=numberOfSkills * 3,
+        max_number_of_documents=numberOfSkills,
+        include_matched_chunks_content=False,
+        filter='knowledgeType = "skill"',
+    )
+    return format_object(__build_skill_discovery_results(search_results), args["format"])
+
+@mcp.tool(name="search_agent_memory", description=AGENT_MEMORY_TOOL_DESCRIPTION)
+def search_agent_memory(
+    collection: Annotated[str, Field(description=collection_field_description)],
+    query: Annotated[str, Field(description="Search query for AGENTS.md, memory files, and other indexed agent knowledge.", default="")],
+    filter: Annotated[str | None, Field(description=filter_field_description, default=None)],
+    numberOfChunks: Annotated[int, Field(description=f"Number of best matched memory chunks to return. Max allowed: {args['maxNumberOfChunks']}.", default=20)],
+) -> str:
+    error = __ensure_agent_knowledge_collection(collection)
+    if error:
+        return error
+    if not query and not filter:
+        return "Error: at least one of 'query' or 'filter' must be provided."
+    if numberOfChunks > args["maxNumberOfChunks"]:
+        return f"Error: numberOfChunks ({numberOfChunks}) exceeds maximum allowed ({args['maxNumberOfChunks']})."
+
+    search_results = __get_or_create_searcher(collection).search(
+        query or "memory",
+        max_number_of_chunks=numberOfChunks,
+        include_matched_chunks_content=True,
+        filter=__combine_filters('knowledgeType = "memory"', filter),
+    )
+    return format_object(search_results, args["format"])
+
 
 mcp.run(transport=transport)

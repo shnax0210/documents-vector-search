@@ -13,6 +13,8 @@ from main.sources.confluence.confluence_document_converter import ConfluenceDocu
 from main.sources.confluence.confluence_cloud_document_converter import ConfluenceCloudDocumentConverter
 from main.sources.files.files_document_reader import FilesDocumentReader
 from main.sources.files.files_document_converter import FilesDocumentConverter
+from main.sources.agent_knowledge.agent_knowledge_document_reader import AgentKnowledgeDocumentReader
+from main.sources.agent_knowledge.agent_knowledge_document_converter import AgentKnowledgeDocumentConverter
 from main.indexes.indexer_factory import load_indexer
 from main.core.documents_collection_creator import DocumentCollectionCreator, OPERATION_TYPE
 from main.splitter.text_splitter import TextSplitter
@@ -81,6 +83,10 @@ def __create_reader_and_converter(manifest):
     
     if manifest['reader']['type'] == 'localFiles':
         reader, converter = __create_local_files_reader_and_converter(manifest)
+        return [reader, converter]
+
+    if manifest['reader']['type'] == 'agentKnowledge':
+        reader, converter = __create_agent_knowledge_reader_and_converter(manifest)
         return [reader, converter]
 
     raise Exception(f"Unknown document reader type: {manifest['reader']['type']}")
@@ -183,4 +189,17 @@ def __create_local_files_reader_and_converter(manifest):
                                 fail_fast=fail_fast,
                                 start_from_time=update_time)
     converter = FilesDocumentConverter(__create_text_splitter(manifest))
+    return reader, converter
+
+def __create_agent_knowledge_reader_and_converter(manifest):
+    reader_config = manifest['reader']
+    reader = AgentKnowledgeDocumentReader(
+        project_root=reader_config['projectRoot'],
+        agent_name=reader_config.get('agentName', 'agent'),
+        include_user_knowledge=reader_config.get('includeUserKnowledge', True),
+        include_project_knowledge=reader_config.get('includeProjectKnowledge', True),
+        fail_fast=reader_config.get('failFast', False),
+        start_from_time=__calculate_exact_update_time(manifest),
+    )
+    converter = AgentKnowledgeDocumentConverter(__create_text_splitter(manifest))
     return reader, converter
