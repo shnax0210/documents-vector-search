@@ -29,7 +29,6 @@ def setup_root_logger(level: int = logging.INFO, use_stderr: bool = False) -> lo
 
 def configure_third_party_loggers() -> None:
     library_configs = {
-        'faiss': logging.INFO,
         'sentence_transformers': logging.INFO,
     }
     

@@ -1,5 +1,9 @@
 # Updates
 
+## 2026/08/15 — FAISS support removed (BREAKING CHANGE!)
+- `indexer_FAISS_IndexFlatL2` indexer and `faiss-cpu` dependency are removed, `ChromaDb` and `SqlLiteBM25` remain the only indexers;
+- Collections created with `indexer_FAISS_IndexFlatL2` are no longer supported and must be recreated with `indexer_ChromaDb__embeddings_...` and/or `indexer_SqlLiteBM25` indexers.
+
 ## 2026/08/15 — Single `dvs.py` entry point (BREAKING CHANGE!)
 - All root scripts are replaced by one script with operations: `uv run dvs.py <operation>`, where operation is one of `create-confluence`, `create-jira`, `create-files`, `update`, `search`, `fetch`, `mcp` (unified MCP server) or `mcp-single` (one collection per MCP server);
 - Each operation has its own arguments, every argument has a short and a long form (e.g. `-c` / `--collection`), single dash long forms like `-collection` are removed;

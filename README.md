@@ -37,7 +37,7 @@ Index documents from Jira, Confluence, or local files into a local vector databa
 - Filter results by metafields (space, project, date, etc.)
 - Ability to extend: add more data sources, search engines, embeddings, etc.
 
-**Technologies:** [ChromaDB](https://github.com/chroma-core/chroma), [FAISS](https://github.com/facebookresearch/faiss), SQLite (BM25), [sentence-transformers](https://pypi.org/project/sentence-transformers/), [Unstructured](https://github.com/Unstructured-IO/unstructured), [LangChain](https://python.langchain.com/docs/introduction/)
+**Technologies:** [ChromaDB](https://github.com/chroma-core/chroma), SQLite (BM25), [sentence-transformers](https://pypi.org/project/sentence-transformers/), [Unstructured](https://github.com/Unstructured-IO/unstructured), [LangChain](https://python.langchain.com/docs/introduction/)
 
 More context: [Medium article](https://medium.com/@shnax0210/mcp-tool-for-vector-search-in-confluence-and-jira-6beeade658ba)
 

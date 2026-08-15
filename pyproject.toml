@@ -5,7 +5,6 @@ description = "Project allows document indexing in a local vector database and t
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "faiss-cpu>=1.13.2",
     "chromadb>=1.4.1",
     "bs4>=0.0.2",
     "langchain-text-splitters>=1.1.0",
