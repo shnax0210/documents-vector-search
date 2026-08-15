@@ -37,7 +37,7 @@ Index documents from Jira, Confluence, or local files into a local vector databa
 - Filter results by metafields (space, project, date, etc.)
 - Ability to extend: add more data sources, search engines, embeddings, etc.
 
-**Technologies:** [ChromaDB](https://github.com/chroma-core/chroma), SQLite (BM25), [sentence-transformers](https://pypi.org/project/sentence-transformers/), [Unstructured](https://github.com/Unstructured-IO/unstructured), [LangChain](https://python.langchain.com/docs/introduction/)
+**Technologies:** SQLite ([sqlite-vec](https://github.com/asg017/sqlite-vec) and BM25), [ChromaDB](https://github.com/chroma-core/chroma), [sentence-transformers](https://pypi.org/project/sentence-transformers/), [Unstructured](https://github.com/Unstructured-IO/unstructured), [LangChain](https://python.langchain.com/docs/introduction/)
 
 More context: [Medium article](https://medium.com/@shnax0210/mcp-tool-for-vector-search-in-confluence-and-jira-6beeade658ba)
 
@@ -87,9 +87,10 @@ See `./main/core/documents_collection_creator.py` for creation/update details an
 
 ### Indexers configuration
 
-When you create a collection, you can specify a list of `indexers` like: `--indexers "indexer_ChromaDb__embeddings_sentence-transformers_slash_all-MiniLM-L6-v2", "indexer_SqlLiteBM25"`. The indexers define what vector/keyword databases and embedding models are used. Database and embedding model are separated by `__`. For example:
-- `indexer_ChromaDb__embeddings_sentence-transformers_slash_all-MiniLM-L6-v2` means that `ChromaDb` is used as vector database and [`sentence-transformers/all-MiniLM-L6-v2`](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2) is used as the embedding model. You can use any embedding model from next [list](https://huggingface.co/models?pipeline_tag=sentence-similarity&library=sentence-transformers&sort=trending), you only need to add prefix `embeddings_` and replace slash symbols with `_slash_`. For example, if you want to use ChromaDb with [BAAI/bge-m3](https://huggingface.co/BAAI/bge-m3) embedder model, indexer name should be: `indexer_ChromaDb__embeddings_BAAI_slash_bge-m3`;
+When you create a collection, you can specify a list of `indexers` like: `--indexers "indexer_SqlLiteVector__embeddings_sentence-transformers_slash_all-MiniLM-L6-v2", "indexer_SqlLiteBM25"` (it's also the default value). The indexers define what vector/keyword databases and embedding models are used. Database and embedding model are separated by `__`. For example:
+- `indexer_SqlLiteVector__embeddings_sentence-transformers_slash_all-MiniLM-L6-v2` means that SqlLite with [`sqlite-vec`](https://github.com/asg017/sqlite-vec) extension is used as vector database and [`sentence-transformers/all-MiniLM-L6-v2`](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2) is used as the embedding model. You can use any embedding model from next [list](https://huggingface.co/models?pipeline_tag=sentence-similarity&library=sentence-transformers&sort=trending), you only need to add prefix `embeddings_` and replace slash symbols with `_slash_`. For example, if you want to use it with [BAAI/bge-m3](https://huggingface.co/BAAI/bge-m3) embedder model, indexer name should be: `indexer_SqlLiteVector__embeddings_BAAI_slash_bge-m3`;
 - `indexer_SqlLiteBM25` means that SqlLite BM25 is used as search engine.
+- `indexer_ChromaDb__embeddings_sentence-transformers_slash_all-MiniLM-L6-v2` means that `ChromaDb` is used as vector database and [`sentence-transformers/all-MiniLM-L6-v2`](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2) is used as the embedding model. Embedding model names follow the same rules as for `indexer_SqlLiteVector`.
 
 You can define as many indexers as you want, their search results will be combined by Reciprocal Rank Fusion.
 
@@ -233,7 +234,7 @@ uv run dvs.py search \
 
 #### Filtering by metafields
 
-Works with ChromaDB and SQLite BM25 indexes.
+Works with ChromaDB, SQLite BM25 and SQLite Vector indexes.
 
 **Syntax:**
 ```

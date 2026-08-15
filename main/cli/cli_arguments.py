@@ -1,6 +1,6 @@
 import argparse
 
-DEFAULT_INDEXERS = ["indexer_ChromaDb__embeddings_sentence-transformers_slash_all-MiniLM-L6-v2", "indexer_SqlLiteBM25"]
+DEFAULT_INDEXERS = ["indexer_SqlLiteVector__embeddings_sentence-transformers_slash_all-MiniLM-L6-v2", "indexer_SqlLiteBM25"]
 
 FORMAT_CHOICES = ["json", "json_with_indent", "toon"]
 

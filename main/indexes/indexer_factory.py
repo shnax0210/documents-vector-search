@@ -5,6 +5,7 @@ from typing import List
 from .indexers.base_indexer import BaseIndexer
 from .indexers.chroma_indexer import ChromaIndexer
 from .indexers.sqllite_indexer import SqlliteIndexer
+from .indexers.sqllite_vector_indexer import SqlliteVectorIndexer
 from .embeddings.base_embedder import BaseEmbedder
 from .embeddings.sentence_embeder import SentenceEmbedder
 
@@ -70,7 +71,7 @@ def __fail_if_faiss_indexer(indexer_type):
     if indexer_type == "indexer_FAISS_IndexFlatL2":
         raise ValueError(
             "FAISS support is removed. Please recreate the collection with "
-            "'indexer_ChromaDb__embeddings_...' and/or 'indexer_SqlLiteBM25' indexers."
+            "'indexer_SqlLiteVector__embeddings_...' and/or 'indexer_SqlLiteBM25' indexers."
         )
 
 def create_indexer(indexer_name, collection_name=None, persister=None) -> BaseIndexer:
@@ -84,6 +85,10 @@ def create_indexer(indexer_name, collection_name=None, persister=None) -> BaseIn
     if indexer_type == "indexer_SqlLiteBM25":
         storage_path = __build_storage_path(indexer_name, collection_name, persister)
         return SqlliteIndexer(indexer_name, storage_path)
+
+    if indexer_type == "indexer_SqlLiteVector":
+        storage_path = __build_storage_path(indexer_name, collection_name, persister)
+        return SqlliteVectorIndexer(indexer_name, __create_sentence_embedder(embedding_model), storage_path)
 
     raise ValueError(f"Unknown indexer name: {indexer_name}")
 
@@ -132,5 +137,9 @@ def load_indexer(indexer_name, collection_name, persister) -> BaseIndexer:
 
         serialized_data = persister.read_bin_file(f"{collection_name}/indexes/{indexer_name}/indexer")
         return SqlliteIndexer(indexer_name, storage_path, serialized_data)
+
+    if indexer_type == "indexer_SqlLiteVector":
+        storage_path = __build_storage_path(indexer_name, collection_name, persister)
+        return SqlliteVectorIndexer(indexer_name, __create_sentence_embedder(embedding_model), storage_path)
 
     raise ValueError(f"Unknown indexer name: {indexer_name}")

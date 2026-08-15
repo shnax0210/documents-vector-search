@@ -13,6 +13,7 @@ dependencies = [
     "sentence-transformers>=5.2.0",
     "unstructured[all-docs]>=0.18.24",
     "toons>=0.5.3",
+    "sqlite-vec>=0.1.9",
 ]
 
 [dependency-groups]

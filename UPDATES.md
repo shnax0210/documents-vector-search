@@ -1,5 +1,9 @@
 # Updates
 
+## 2026/08/15 — New `SqlLiteVector` indexer, it's default now
+- Added `indexer_SqlLiteVector__embeddings_...` indexer: vector search in SqlLite via [`sqlite-vec`](https://github.com/asg017/sqlite-vec) extension, supports the same metafields filtering syntax as other indexers;
+- The indexer consumes less memory and has only slightly worse performance as ChromaDb one very big collections.
+
 ## 2026/08/15 — FAISS support removed (BREAKING CHANGE!)
 - `indexer_FAISS_IndexFlatL2` indexer and `faiss-cpu` dependency are removed, `ChromaDb` and `SqlLiteBM25` remain the only indexers;
 - Collections created with `indexer_FAISS_IndexFlatL2` are no longer supported and must be recreated with `indexer_ChromaDb__embeddings_...` and/or `indexer_SqlLiteBM25` indexers.
