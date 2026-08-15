@@ -20,8 +20,9 @@ Don't catch exceptions unless it's top level code or you re-raise them with more
 - Never add comments to describe what the code does, it should be clear from the code itself.
 
 ## Use encapsulation intensively
-- Make evything private by default and add public methods/properties only when it's explicitly needed.
-- Add "__" prefix for private functions.
+- Make evything private by default and add public methods only when it's explicitly needed;
+- Add "__" prefix for private functions;
+- Don't add the __" prefix for variables;
 
 ## Add interface for each class
 For each class, add an abstract base class that defines the interface for the class and make the class inherit from it.
