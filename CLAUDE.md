@@ -44,4 +44,4 @@ When creating functions, prefer passing parameters instead of using global state
 
 # Prefere MCP if it's available for search
 
-When user asks to search something in Confluence/Jira/Files, MCP for collection search is added and there is a relevant collection - always use the MCP (avoid direct search in files or running of `collection_search_cmd_adapter.py` and `collection_fetch_cmd_adapter.py` scripts unless explicitly asked). 
+When user asks to search something in Confluence/Jira/Files, MCP for collection search is added and there is a relevant collection - always use the MCP (avoid direct search in files or running of `dvs.py search` and `dvs.py fetch` operations unless explicitly asked). 

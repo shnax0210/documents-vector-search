@@ -1,5 +1,11 @@
 # Updates
 
+## 2026/08/15 — Single `dvs.py` entry point (BREAKING CHANGE!)
+- All root scripts are replaced by one script with operations: `uv run dvs.py <operation>`, where operation is one of `create-confluence`, `create-jira`, `create-files`, `update`, `search`, `fetch`, `mcp` (unified MCP server) or `mcp-single` (one collection per MCP server);
+- Each operation has its own arguments, every argument has a short and a long form (e.g. `-c` / `--collection`), single dash long forms like `-collection` are removed;
+- Unified MCP HTTP port argument is renamed from `--http-port` to `-p` / `--httpPort`;
+- MCP configs must be updated: `"args": ["--directory", "${fullPathToRootProjectFolder}", "run", "dvs.py", "mcp"]`.
+
 ## 2026/05/12
 - Updated SqlLite indexer to use file based storage instead of inmemory one, since inmemory one has limitation on number data loaded what caused fails for very big collections. Existing collections will be mograted to the new format automatically during first usage.
 

@@ -23,4 +23,4 @@ RUN uv sync
 EXPOSE 8000
 
 # Set entrypoint - provide default command that shows usage
-CMD ["python", "-c", "print('documents-vector-search ready! Use: docker run -v $(pwd)/data:/app/data documents-vector-search uv run collection_search_cmd_adapter.py --help')"]
+CMD ["python", "-c", "print('documents-vector-search ready! Use: docker run -v $(pwd)/data:/app/data documents-vector-search uv run dvs.py --help')"]

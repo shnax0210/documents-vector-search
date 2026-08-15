@@ -9,6 +9,7 @@
   - [Env setup](#env-setup)
     - [Local setup](#local-setup)
     - [Docker setup](#docker-setup)
+  - [Commands](#commands)
   - [Authentication](#authentication)
   - [Create collection for Confluence](#create-collection-for-confluence)
   - [Create collection for Jira](#create-collection-for-jira)
@@ -119,7 +120,7 @@ docker run --rm \
   -v $(pwd)/data:/app/data \
   -e CONF_TOKEN="${yourToken}" \
   documents-vector-search \
-  uv run confluence_collection_create_cmd_adapter.py \
+  uv run dvs.py create-confluence \
     --collection "confluence" \
     --url "${baseConfluenceUrl}" \
     --cql "${confluenceQuery}"
@@ -135,10 +136,31 @@ docker run --rm \
   -p 8000:8000 \
   -v $(pwd)/data:/app/data \
   documents-vector-search \
-  uv run collection_search_unified_mcp_adapter.py --http --port 8000
+  uv run dvs.py mcp --http --httpPort 8000
 ```
 
 Then configure your MCP client to connect to `http://localhost:8000/mcp`.
+
+### Commands
+
+All functionality is available through a single script:
+
+```bash
+uv run dvs.py <operation> [arguments]
+```
+
+| Operation | Description |
+|---|---|
+| `create-confluence` | Create a collection from Confluence pages |
+| `create-jira` | Create a collection from Jira tickets |
+| `create-files` | Create a collection from local files |
+| `update` | Re-index new and changed documents of an existing collection |
+| `search` | Search in a collection from the command line |
+| `fetch` | Fetch a document content from a collection by its id |
+| `mcp` | Run unified MCP server (all collections, stdio or HTTP) |
+| `mcp-single` | Run MCP stdio server for a single collection |
+
+Every operation has its own arguments, each with a short and a long form (e.g. `-c` / `--collection`). Run `uv run dvs.py <operation> --help` to see all of them.
 
 ### Authentication
 
@@ -158,7 +180,7 @@ Cloud vs Server is auto-detected: URLs ending with `.atlassian.net` are treated 
 ### Create collection for Confluence
 
 ```bash
-uv run confluence_collection_create_cmd_adapter.py \
+uv run dvs.py create-confluence \
   --collection "confluence" \
   --url "${baseConfluenceUrl}" \
   --cql "${confluenceQuery}"
@@ -171,7 +193,7 @@ uv run confluence_collection_create_cmd_adapter.py \
 ### Create collection for Jira
 
 ```bash
-uv run jira_collection_create_cmd_adapter.py \
+uv run dvs.py create-jira \
   --collection "jira" \
   --url "${baseJiraUrl}" \
   --jql "${jiraQuery}"
@@ -183,7 +205,7 @@ uv run jira_collection_create_cmd_adapter.py \
 ### Create collection for local files
 
 ```bash
-uv run files_collection_create_cmd_adapter.py --basePath "${pathToFolder}"
+uv run dvs.py create-files --basePath "${pathToFolder}"
 ```
 
 - Collection name defaults to the last folder name. Override with `--collection {name}`
@@ -194,13 +216,13 @@ uv run files_collection_create_cmd_adapter.py --basePath "${pathToFolder}"
 ### Update collection
 
 ```bash
-uv run collection_update_cmd_adapter.py --collection "${collectionName}"
+uv run dvs.py update --collection "${collectionName}"
 ```
 
 ### Search
 
 ```bash
-uv run collection_search_cmd_adapter.py \
+uv run dvs.py search \
   --collection "${collectionName}" \
   --query "How to set up react project locally"
 ```
@@ -277,7 +299,7 @@ Operators: `=`, `!=`, `>`, `>=`, `<`, `<=`. Use `and` / `or` to join conditions 
 ### Fetch
 
 ```bash
-uv run collection_fetch_cmd_adapter.py \
+uv run dvs.py fetch \
   --collection "${collectionName}" \
   --id "${documentId}"
 ```
@@ -288,12 +310,12 @@ uv run collection_fetch_cmd_adapter.py \
 
 ### Set up MCP
 
-There are two MCP server adapters:
+There are two MCP server operations:
 
-| Adapter | Best for | Key differences |
+| Operation | Best for | Key differences |
 |---|---|---|
-| `collection_search_unified_mcp_adapter.py` | Modern AI models | All collections in one server. AI model chooses collection, filter and number of chunks. Supports stdio and HTTP transport. |
-| `collection_search_mcp_stdio_adapter.py` | Simpler AI models or restricted setups | One collection per server. Collection, filter and other settings are hardcoded via CLI args. Stdio only. |
+| `dvs.py mcp` | Modern AI models | All collections in one server. AI model chooses collection, filter and number of chunks. Supports stdio and HTTP transport. |
+| `dvs.py mcp-single` | Simpler AI models or restricted setups | One collection per server. Collection, filter and other settings are hardcoded via CLI args. Stdio only. |
 
 #### Unified MCP (recommended)
 
@@ -307,7 +329,7 @@ Add to your MCP config (e.g., `.vscode/mcp.json` for VS Code + GitHub Copilot):
             "command": "uv",
             "args": [
                 "--directory", "${fullPathToRootProjectFolder}",
-                "run", "collection_search_unified_mcp_adapter.py"
+                "run", "dvs.py", "mcp"
             ]
         }
     }
@@ -322,7 +344,7 @@ Add to your MCP config (e.g., `.vscode/mcp.json` for VS Code + GitHub Copilot):
 Or start as http server:
 
 ```bash
-uv run collection_search_unified_mcp_adapter.py --http --port 8000
+uv run dvs.py mcp --http --httpPort 8000
 ```
 
 And setup mcp like:
@@ -348,7 +370,7 @@ And setup mcp like:
             "command": "uv",
             "args": [
                 "--directory", "${fullPathToRootProjectFolder}",
-                "run", "collection_search_mcp_stdio_adapter.py",
+                "run", "dvs.py", "mcp-single",
                 "--collection", "${collectionName}"
             ]
         }
@@ -377,4 +399,4 @@ uv run pytest
 
 - **Incremental updates** — only new/changed documents are re-indexed. Uses `lastModifiedDocumentTime` from `manifest.json` (5 mins for Jira and Confluence buffer to avoid missing concurrent updates);
 - **Caching** — Jira/Confluence collection creation caches downloaded documents in `./data/caches/{hash}`. Same parameters = same cache. If you need fresh data, either run an update after creation, or delete the cache folder manually;
-- there are more parameters in scripts, use "--help" to get more.
+- there are more parameters in each operation, use `uv run dvs.py <operation> --help` to get more.

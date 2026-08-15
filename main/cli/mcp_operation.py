@@ -1,0 +1,227 @@
+import argparse
+import json
+import os
+import threading
+from typing import Annotated
+
+from mcp.server.fastmcp import FastMCP
+from pydantic import Field
+
+from main.cli.base_cli_operation import BaseCliOperation
+from main.cli.cli_arguments import add_format_argument, add_rrf_k_argument
+from main.factories.fetch_collection_factory import create_collection_fetcher
+from main.factories.search_collection_factory import create_collection_searcher
+from main.utils.formatting import format_object
+
+COLLECTIONS_BASE_PATH = "./data/collections"
+
+COLLECTION_TYPE_MAP = {
+    "confluence": "confluence",
+    "confluenceCloud": "confluence",
+    "jira": "jira",
+    "jiraCloud": "jira",
+    "localFiles": "files",
+}
+
+FILTER_FIELDS_BY_TYPE = {
+    "confluence": ["space", "createdAt", "createdBy", "lastModifiedAt"],
+    "jira": ["project", "type", "status", "priority", "epic", "assignee", "createdAt", "createdBy", "lastModifiedAt"],
+    "files": ["createdAt", "lastModifiedAt", "folder1", "folder2", "...", "folderN"],
+}
+
+SEARCH_TOOL_DESCRIPTION = """Search in a collection of documents.
+
+# Typical use cases
+- User asks to search in a specific collection;
+- User asks to search in a system for which there is a dedicated collection (e.g. "search in Confluence/Jira/Files"). In this case, you must to select most relevant collection for the system if there are several.
+
+# Search summarization
+
+Always follow guides from this section unless user explicitly asks to use different response format.
+
+## Rules
+- Attach a reference (citation such as a Confluence page URL, Jira issue key, or file path) to each piece of information, immediately after the relevant sentence.
+- If you were not able to find relevant information, say that you don't know instead of making something up; 
+- Be concise yet complete;
+- Keep "Overview" section 2-3 sentences long;
+- Keep "Key facts" section 2-7 bullet points long. 
+- Try to put more references (2-15) into "More info" section if there are many of them, and they are not critical for understanding the main point.
+
+## Format
+
+```markdown
+# Overview
+<base_info_here>
+# Key facts
+- <fact1> [ref_name1](ref_link1)
+- <fact2> [ref_name2](ref_link2)
+...
+# More info
+- <additional_info1> [ref_name3](ref_link3)
+- <additional_info2> [ref_name4](ref_link4)
+...
+```
+"""
+
+FETCH_TOOL_DESCRIPTION = """Fetch a document content from a collection by its id.
+
+# Typical use cases
+- User asks something and provides an id or url (fetch id from the url in the case) of a document (it can be Confluence page, jira ticket or file path) - fetch the document by the tool and use as a context.
+- After using search_in_collection tool, you need more context from a found document.
+"""
+
+
+class McpOperation(BaseCliOperation):
+    def name(self) -> str:
+        return "mcp"
+
+    def help(self) -> str:
+        return "Run unified MCP server that exposes all collections (stdio or HTTP transport)"
+
+    def configure(self, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("-c", "--collections", nargs="*", default=None, help="Collections to search in. If not passed, all collections are available.")
+
+        add_rrf_k_argument(parser)
+
+        parser.add_argument("-n", "--defaultNumberOfChunks", required=False, type=int, default=50, help="Default number of chunks returned by search (default: 50).")
+        parser.add_argument("-x", "--maxNumberOfChunks", required=False, type=int, default=100, help="Maximum allowed number of chunks for search (default: 100).")
+
+        add_format_argument(parser, default="toon")
+
+        parser.add_argument("-t", "--http", action="store_true", required=False, default=False, help="Run MCP server over HTTP (streamable-http) instead of stdio.")
+        parser.add_argument("-p", "--httpPort", required=False, type=int, default=8000, help="Port for HTTP transport (default: 8000).")
+
+    def log_to_stderr(self, args: dict) -> bool:
+        return not args["http"]
+
+    def run(self, args: dict) -> None:
+        collections = self.__discover_collections(args["collections"])
+
+        if args["collections"] is not None:
+            self.__validate_collections(args["collections"], collections)
+
+        if not collections:
+            raise ValueError("Error: no collections found.")
+
+        collection_field_description = self.__build_collection_field_description(collections)
+        filter_field_description = self.__build_filter_field_description(collections)
+        available_names = {collection["name"] for collection in collections}
+
+        searcher_cache = {}
+        searcher_cache_lock = threading.Lock()
+
+        def get_or_create_searcher(collection_name: str):
+            if collection_name in searcher_cache:
+                return searcher_cache[collection_name]
+
+            with searcher_cache_lock:
+                if collection_name not in searcher_cache:
+                    searcher_cache[collection_name] = create_collection_searcher(collection_name=collection_name, rrf_k=args["rrfK"])
+
+            return searcher_cache[collection_name]
+
+        mcp = FastMCP("documents-search-unified", port=args["httpPort"])
+
+        @mcp.tool(name="search_in_collection", description=SEARCH_TOOL_DESCRIPTION)
+        def search_in_collection(
+            collection: Annotated[str, Field(description=collection_field_description)],
+            query: Annotated[str, Field(description="Search query text for vector similarity and keyword search.", default="")],
+            filter: Annotated[str | None, Field(description=filter_field_description, default=None)],
+            numberOfChunks: Annotated[int, Field(description=f"Number of best matched document chunks to return. Prefer to use default value unless there is strong reason to change. Max allowed: {args['maxNumberOfChunks']}.", default=args["defaultNumberOfChunks"])],
+        ) -> str:
+            if collection not in available_names:
+                return f"Error: collection '{collection}' is not available. Available: {', '.join(sorted(available_names))}"
+            if not query and not filter:
+                return "Error: at least one of 'query' or 'filter' must be provided."
+            if numberOfChunks > args["maxNumberOfChunks"]:
+                return f"Error: numberOfChunks ({numberOfChunks}) exceeds maximum allowed ({args['maxNumberOfChunks']})."
+
+            search_results = get_or_create_searcher(collection).search(
+                query or "",
+                max_number_of_chunks=numberOfChunks,
+                include_matched_chunks_content=True,
+                filter=filter or None,
+            )
+            return format_object(search_results, args["format"])
+
+        @mcp.tool(name="fetch_from_collection", description=FETCH_TOOL_DESCRIPTION)
+        def fetch_from_collection(
+            collection: Annotated[str, Field(description=collection_field_description)],
+            id: Annotated[str, Field(description="Document identifier. Confluence: page id. Jira: issue key (e.g. PROJ-123). Files: relative path.")],
+            startLine: Annotated[int, Field(description="First line number to return (1-based, inclusive)", default=1)],
+            endLine: Annotated[int, Field(description="Last line number to return (1-based, inclusive)", default=250)],
+        ) -> str:
+            if collection not in available_names:
+                return f"Error: collection '{collection}' is not available. Available: {', '.join(sorted(available_names))}"
+
+            fetcher = create_collection_fetcher(collection_name=collection)
+            result = fetcher.fetch(id=id, start_line=startLine, end_line=endLine)
+            return format_object(result, args["format"])
+
+        mcp.run(transport="streamable-http" if args["http"] else "stdio")
+
+    def __discover_collections(self, allowed_names: list[str] | None) -> list[dict]:
+        collections = []
+        for name in sorted(os.listdir(COLLECTIONS_BASE_PATH)):
+            collection_path = os.path.join(COLLECTIONS_BASE_PATH, name)
+            manifest_path = os.path.join(collection_path, "manifest.json")
+
+            if not os.path.isfile(manifest_path):
+                continue
+
+            manifest = self.__read_json_file(manifest_path)
+
+            reader_type = manifest.get("reader", {}).get("type", "")
+            collection_type = COLLECTION_TYPE_MAP.get(reader_type)
+
+            if not collection_type:
+                raise ValueError(f"Unknown reader type '{reader_type}' for collection '{name}' in manifest.json. Supported types: {COLLECTION_TYPE_MAP}")
+
+            if allowed_names is not None and name not in allowed_names:
+                continue
+            collections.append({
+                "name": name,
+                "type": collection_type,
+                "numberOfDocuments": manifest.get("numberOfDocuments"),
+            })
+        return collections
+
+    def __read_json_file(self, path: str) -> dict:
+        with open(path, "r", encoding="utf-8") as file:
+            return json.load(file)
+
+    def __validate_collections(self, allowed_names: list[str], discovered: list[dict]) -> None:
+        discovered_names = {collection["name"] for collection in discovered}
+        missing = set(allowed_names) - discovered_names
+        if missing:
+            raise ValueError(f"Error: collections not found: {', '.join(sorted(missing))}, available: {', '.join(sorted(discovered_names))}")
+
+    def __build_collection_field_description(self, collections: list[dict]) -> str:
+        collection_rows = "\n".join(f"| {collection['name']} | {collection['type']} |" for collection in collections)
+
+        return f"""Collection name must be one of below:
+
+| Collection name | Collection type |
+|---|---|
+{collection_rows}
+"""
+
+    def __build_filter_field_description(self, collections: list[dict]) -> str:
+        present_types = sorted({collection["type"] for collection in collections})
+
+        filter_rows = "\n".join(f"| {type_name} | {', '.join(FILTER_FIELDS_BY_TYPE[type_name])} |" for type_name in present_types)
+
+        return f"""Filter expression to narrow results.
+
+Each collection type supports different fields:
+
+| Collection type | Filter fields |
+|---|---|
+{filter_rows}
+
+Filter syntax: `field operator "value"`. Operators: =, !=, >, >=, <, <=. Combine conditions with `and` / `or`. Use parentheses for grouping.
+Examples:
+- space = "SPACE_KEY"
+- space = "SPACE_KEY" and lastModifiedAt > "2026-01-01"
+- (space = "X" or space = "Y") and createdBy = "user"
+"""
