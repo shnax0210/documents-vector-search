@@ -30,9 +30,10 @@ class ConfluenceDocumentReader(BaseDocumentReader):
         self.login = login
         self.password = password
         self.batch_size = batch_size
-        # Confluence has hierarchical comments, we can read first level by adding "children.comment.body.storage" to "expand" parameter
-        # but to read all comments we need to make additional request with "depth=all" parameter
-        self.expand = "body.storage,ancestors,version,space,history,children.comment" if read_all_comments else "body.storage,ancestors,version,space,history,children.comment.body.storage"
+        # Confluence has hierarchical comments, first level ones are read together with a page by "children.comment.body.storage" expand,
+        # but to read all comments we need to make additional request with "depth=all" parameter,
+        # first level comments are still read with a page to be used as a fallback when the additional request fails
+        self.expand = "body.storage,ancestors,version,space,history,children.comment.body.storage"
         self.number_of_retries = number_of_retries
         self.retry_delay = retry_delay
         self.max_skipped_items_in_row = max_skipped_items_in_row
@@ -81,8 +82,10 @@ class ConfluenceDocumentReader(BaseDocumentReader):
         if page['children']['comment']['size'] == 0:
             return []
 
+        first_level_comments = page['children']['comment']['results']
+
         if not self.read_all_comments:
-            return page['children']['comment']['results']
+            return first_level_comments
 
         read_batch_func = lambda start_at, batch_size: self.__request(
             self.__add_url_prefix(f"/rest/api/content/{page['id']}/child/comment"),
@@ -95,16 +98,30 @@ class ConfluenceDocumentReader(BaseDocumentReader):
 
         comments_generator = read_items_in_batches(read_batch_func,
                               fetch_items_from_result_func=lambda result: result['results'],
-                              fetch_total_from_result_func=lambda result: result['size'],
+                              fetch_total_from_result_func=self.__calculate_number_of_comments_to_read,
                               batch_size=self.batch_size,
-                              max_skipped_items_in_row=self.max_skipped_items_in_row,
+                              max_skipped_items_in_row=0,
                               itemsName="comments")
 
+        read_comments = []
         try:
-            return [comment for comment in comments_generator]
+            for comment in comments_generator:
+                read_comments.append(comment)
+            return read_comments
         except Exception as error:
-            logging.warning(f"Failed to read comments for page {page['id']}: {error}. Comments will be skipped.")
-            return page['children']['comment']['results']
+            comments_to_use = read_comments or first_level_comments
+            logging.warning(f"Failed to read all comments for page {page['id']}: {error}. Only {len(comments_to_use)} comments will be used for the page.")
+            return comments_to_use
+
+    # "size" of a comments batch is a number of comments in the batch, not a total number of comments,
+    # so the total is unknown until a batch without "next" link is read
+    def __calculate_number_of_comments_to_read(self, batch_result):
+        number_of_read_comments = batch_result['start'] + batch_result['size']
+
+        if 'next' in batch_result['_links']:
+            return number_of_read_comments + 1
+
+        return number_of_read_comments
 
     def __read_items(self):
         read_batch_func = lambda start_at, batch_size: self.__request(

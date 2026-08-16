@@ -1,10 +1,13 @@
 # Core instructions
 
 ## Keep it simple
-Start from minimal working solution and iterate only when explicitly asked.
+Start from minimal working solution and iterate only when explicitly asked. Use Occam's razor principle.
 
-## Follow High Cohesion and Low Coupling principles
-Reduce dependencies between code/documentation/terminology parts and keep related code/documentation/terminology together.
+## Follow SOLID principles
+Pay attention to Open Close. If reasonable use list of objects with same interface, so it's possbile to add new logic to the list without code changes.
+
+## Follow GRASP principles
+Pay attention to "Follow High Cohesion and Low Coupling". Reduce dependencies between code/documentation/terminology parts and keep related code/documentation/terminology together.
 
 ## Be consistent with existing code/documentation/terminology
 
@@ -20,8 +23,7 @@ Don't catch exceptions unless it's top level code or you re-raise them with more
 - Never add comments to describe what the code does, it should be clear from the code itself.
 
 ## Use encapsulation intensively
-- Make evything private by default and add public methods only when it's explicitly needed;
-- Add "__" prefix for private functions;
+- Make all functions private by default by adding "__" prefix unless the functin is used from another file.
 - Don't add the __" prefix for variables;
 
 ## Add interface for each class
@@ -42,4 +44,4 @@ When creating functions, prefer passing parameters instead of using global state
 
 # Prefere MCP if it's available for search
 
-When user asks to search something in Confluence/Jira/Files, MCP for collection search is added and there is a relevant collection - always use the MCP (avoid direct search in files or running of `collection_search_cmd_adapter.py` and `collection_fetch_cmd_adapter.py` scripts unless explicitly asked). 
+When user asks to search something in Confluence/Jira/Files, MCP for collection search is added and there is a relevant collection - always use the MCP (avoid direct search in files or running of `dvs.py search` and `dvs.py fetch` operations unless explicitly asked). 

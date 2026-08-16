@@ -4,7 +4,8 @@ import os
 import numpy as np
 from typing import List, Tuple, Optional
 
-from main.indexes.filter_parser import parse_filter, FilterNode, FilterCondition, FilterGroup
+from main.indexes.filter_parser import parse_filter
+from main.indexes.sql_filter_converter import convert_filter_to_sql
 from main.indexes.indexers.base_indexer import BaseIndexer
 
 
@@ -62,7 +63,7 @@ class SqlliteIndexer(BaseIndexer):
         filter_expression = parse_filter(filter)
 
         if filter_expression:
-            where_clause, filter_params = self.__convert_filter_to_sql(filter_expression)
+            where_clause, filter_params = convert_filter_to_sql(filter_expression)
             cursor = self.__get_conn().execute(
                 "SELECT doc_id, bm25(documents) as score "
                 "FROM documents "
@@ -127,20 +128,6 @@ class SqlliteIndexer(BaseIndexer):
                 "CREATE TABLE metadata (doc_id TEXT PRIMARY KEY, data JSON)"
             )
             conn.commit()
-
-    def __convert_filter_to_sql(self, node: FilterNode):
-        if isinstance(node, FilterCondition):
-            return f"json_extract(data, '$.{node.field}') {node.operator} ?", [node.value]
-
-        child_sqls = []
-        params = []
-        for child in node.children:
-            child_sql, child_params = self.__convert_filter_to_sql(child)
-            child_sqls.append(child_sql)
-            params.extend(child_params)
-
-        joiner = " AND " if node.logical_operator == "and" else " OR "
-        return f"({joiner.join(child_sqls)})", params
 
     def __prepare_query(self, text: str) -> str:
         words = text.split()
